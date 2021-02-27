@@ -13,7 +13,7 @@ library(rjags)
 
 ```{r}
 data(graywhales)
-
+#--- b
 model = "model{
   x.0  ~ dnorm(log(2500), 1)
   x[1] ~ dnorm(beta * x.0 + u, inv.sigma02)
@@ -31,20 +31,48 @@ model = "model{
   inv.ita02 ~ dgamma(0.1,0.1)
   sigma2 = 1/inv.sigma02
   ita2 = 1/inv.ita02
-  
 }"
 
 n=dim(graywhales)[1]
 coef = c('beta','u','sigma2','ita2')
+burn.in = 2*1e3
+jm = jags.model(textConnection(model), data=list(n=n, y=log(graywhales[,2])), n.chains=3)
+update(jm, burn.in, progress.bar='none')
+res = coda.samples(jm, variable.names=coef, n.iter=1e5, thin=50)
+#--- b
+gelman.diag(res) #c
+round(effectiveSize(res),2) #c
+par(mfrow=c(2,2)) #c
+acf(res[[1]][,"beta"]) #c
+acf(res[[1]][,"u"]) #c
+acf(res[[1]][,"sigma2"]) #c
+acf(res[[1]][,"ita2"]) #c
+summary(res) #d
+plot(res) #d
 
-jm = jags.model(textConnection(model), data=list(n=n, y=log(graywhales[,2])), n.chains=1)
-update(jm, 2000, progress.bar='none')
-res = coda.samples(jm, variable.names=coef, n.iter=10000)
-summary(res)
-plot(res)
-str(res)
-```
-```{r}
-print()
+beta.den = res[[1]][,1]
+ita2.den = res[[1]][,2]
+sigma2.den = res[[1]][,3]
+u.den = res[[1]][,4]
+
+par(mfrow=c(2,2))
+x = seq(0,1,by=0.001)
+y = dunif(x, min=0, max=1)
+plot(beta.den, trace=FALSE, density=TRUE, col='blue4', main='Beta')
+lines(x, y, type='l', col='red4')
+
+x = seq(0,3.1,by=0.001)
+y = dexp(x, rate=1)
+plot(u.den, trace=FALSE, density=TRUE, col='blue4', main='u')
+lines(x, y, type='l', col='red4')
+
+x = seq(0,1,by=0.001)
+y = dgamma(x, shape=0.1, rate=0.1)
+plot(sigma2.den, trace=FALSE, density=TRUE, col='blue4', main='Sigma2')
+lines(x, y, type='l', col='red4')
+
+y = dgamma(x, shape=0.1, rate=0.1)
+plot(ita2.den, trace=FALSE, density=TRUE, col='blue4', main='Ita2')
+lines(x, y, type='l', col='red4')
 ```
 
