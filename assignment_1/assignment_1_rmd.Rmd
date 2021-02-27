@@ -1,0 +1,50 @@
+---
+title: "Assignment 1"
+author: "Ted Ladas - s2124289"
+date: "27/02/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(MARSS)
+library(rjags)
+```
+
+```{r}
+data(graywhales)
+
+model = "model{
+  x.0  ~ dnorm(log(2500), 1)
+  x[1] ~ dnorm(beta * x.0 + u, inv.sigma02)
+  y[1] ~ dnorm(x[1], inv.ita02)
+  
+  for (t in 2:n){
+     mu[t] = beta*x[t-1] + u
+     x[t] ~ dnorm(mu[t], inv.sigma02)
+     y[t] ~ dnorm(x[t], inv.ita02)
+  } 
+  
+  beta ~ dunif(0,1)
+  u ~ dexp(1)
+  inv.sigma02 ~ dgamma(0.1,0.1)
+  inv.ita02 ~ dgamma(0.1,0.1)
+  sigma2 = 1/inv.sigma02
+  ita2 = 1/inv.ita02
+  
+}"
+
+n=dim(graywhales)[1]
+coef = c('beta','u','sigma2','ita2')
+
+jm = jags.model(textConnection(model), data=list(n=n, y=log(graywhales[,2])), n.chains=1)
+update(jm, 2000, progress.bar='none')
+res = coda.samples(jm, variable.names=coef, n.iter=10000)
+summary(res)
+plot(res)
+str(res)
+```
+```{r}
+print()
+```
+
