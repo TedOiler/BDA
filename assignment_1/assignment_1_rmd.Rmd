@@ -11,6 +11,7 @@ rm(list = ls())
 library(MARSS)
 library(rjags)
 require(fBasics)
+library(INLA)
 ```
 
 ```{r 1b}
@@ -147,7 +148,7 @@ coef.p = c('x')
 
 jm.p = jags.model(textConnection(model0), data=list(n=n.p, y=log(graywhales.p[,2])), n.chains=3)
 update(jm.p, burn.in, progress.bar='none')
-res.p = coda.samples(jm.p, variable.names=coef.p, n.iter=5e3, thin=500)
+res.p = coda.samples(jm.p, variable.names=coef.p, n.iter=5e6, thin=500)
 summary(res.p)
 
 length(summary(res.p)[[1]][,1])
@@ -213,8 +214,7 @@ house <- cbind(temp[1], house)
 house.c <- cbind(house, temp[2])
 house.c
 
-
-
+# # manually centering the data matrix
 # house2 <- read.csv(file = 'Real_estate.csv')
 # n = nrow(house2)
 # ones = rep(1, n)
@@ -225,16 +225,83 @@ house.c
 # H.0 = diag(m) - 1/m * (ones.0 %*% t(ones.0))
 # house2 <- as.data.frame(H %*% as.matrix(house2) %*% H.0)
 # 
-# 
 # house2
+
+lin.mod0 <- lm(log(house.c$Y.house.price.of.unit.area) ~ 
+                house.c$X1.transaction.date +
+                house.c$X2.house.age + 
+                house.c$X3.distance.to.the.nearest.MRT.station +
+                house.c$X4.number.of.convenience.stores + 
+                house.c$X5.latitude + house.c$X6.longitude)
+
+lin.mod0$coefficients
+mse.mod0 <- sqrt(sum(lin.mod0$residuals^2))
+mse.mod0
+
 ```
 
+```{r 2b}
+house <- read.csv(file = 'Real_estate.csv')
+# head(house)
+temp <- house[c(1,8)]
+house <- as.data.frame(scale(house[c(-1,-8)]))
+house <- cbind(temp[1], house)
+house.c <- cbind(house, temp[2])
+house.c
+beta.prec <- 1/1e6
 
+x1 <- house.c$X1.transaction.date
+x2 <- house.c$X2.house.age
+x3 <- house.c$X3.distance.to.the.nearest.MRT.station
+x4 <- house.c$X4.number.of.convenience.stores
+x5 <- house.c$X5.latitude
+x6 <- house.c$X6.longitude
+y  <- log(house.c$Y.house.price.of.unit.area)
 
+data <- data.frame(y,x1,x2,x3,x4,x5,x6)
 
+prec.prior <- list(prec=list(prior = "loggamma", param = c(0.1, 0.1)))
+prior.beta <- list(mean.intercept = 0, prec.intercept = beta.prec,
+                    mean = 0, prec = beta.prec)
 
+lin.mod1 <- inla(y ~ x1 + x2 + x3 + x4 + x5 + x6,
+            data=data,
+            control.family=list(hyper=prec.prior),
+            control.fixed=prior.beta)
 
+summary(lin.mod1)
+plot(lin.mod1$marginals.fixed$`(Intercept)`, type ="l",xlab="x",ylab="Density",
+main='Posterior density of beta0')
+plot(lin.mod1$marginals.fixed$x1, type ="l",xlab="x",ylab="Density",
+main='Posterior density of beta1')
+plot(lin.mod1$marginals.fixed$x2, type ="l",xlab="x",ylab="Density",
+main='Posterior density of beta2')
+plot(lin.mod1$marginals.fixed$x3, type ="l",xlab="x",ylab="Density",
+main='Posterior density of beta3')
+plot(lin.mod1$marginals.fixed$x4, type ="l",xlab="x",ylab="Density",
+main='Posterior density of beta4')
+plot(lin.mod1$marginals.fixed$x5, type ="l",xlab="x",ylab="Density",
+main='Posterior density of beta5')
+plot(lin.mod1$marginals.fixed$x6, type ="l",xlab="x",ylab="Density",
+main='Posterior density of beta6')
+```
 
+```{r 2c}
 
+```
 
+```{r 2d}
 
+```
+
+```{r 2e}
+
+```
+
+```{r 2f}
+
+```
+
+```{r 2g}
+
+```
