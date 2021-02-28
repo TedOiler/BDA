@@ -13,7 +13,7 @@ library(rjags)
 require(fBasics)
 ```
 
-```{r b}
+```{r 1b}
 data(graywhales)
 # print(graywhales)
 missing.data <- matrix(data=c(1986,1988,1989,1990,1991,1994,1996,NA,NA,NA,NA,NA,NA,NA), ncol=2, byrow=FALSE)
@@ -47,7 +47,7 @@ update(jm0, burn.in, progress.bar='none')
 res = coda.samples(jm0, variable.names=coef, n.iter=5e3, thin=500)
 ```
 
-```{r c}
+```{r 1c}
 gelman.diag(res)
 round(effectiveSize(res),2)
 par(mfrow=c(2,2))
@@ -57,7 +57,7 @@ acf(res[[1]][,"sigma2"])
 acf(res[[1]][,"ita2"])
 ```
 
-```{r d}
+```{r 1d}
 summary(res)
 plot(res)
 beta.den = res[[1]][,1]
@@ -82,7 +82,7 @@ plot(ita2.den, trace=FALSE, density=TRUE, col='blue4', main='Ita2')
 lines(x, y, type='l', col='red4')
 ```
 
-```{r e}
+```{r 1e}
 model1 = "model{
   x.0  ~ dnorm(log(2500), 1)
   x[1] ~ dnorm(beta * x.0 + u, inv.sigma02)
@@ -139,7 +139,7 @@ acf(res1[[1]][,"sigma2"])
 acf(res1[[1]][,"ita2"])
 ```
 
-```{r f}
+```{r 1f}
 p.years <- as.matrix(cbind(seq(1998,2050,by=1), rep(NA,53)),ncol=2,byrow=FALSE)
 graywhales.p <- rbind(graywhales, p.years)
 n.p=dim(graywhales.p)[1]
@@ -174,28 +174,67 @@ legend('topleft', legend=c("log-population", "95% symetric CI"),
 # probability calculation pending
 ```
 
-```{r g}
+```{r 1g}
 #predictive checks
 #replicated data
 res.mat=as.matrix(res)
 res.mat
 beta=res.mat[,1]; sigma2=res.mat[,3]; u=res.mat[,4]
+x=log(graywhales[,2])
+
 niterf=nrow(res.mat)
 yrep=matrix(0,nrow=n,ncol=niterf)
 for(l in 1:niterf){
   for(i in 1:n){
-    yrep[i,l]=rnorm(1,beta[l]*x[i,1]+u,sigma[l])  
+    yrep[i,l]=rnorm(1,beta[l]*x[i]+u[l],sigma2[l])  
   }  
 }
+dim(yrep)
 
 #statistics of interest in this case (and different from the ones included in the model)
-yrepmin=apply(yrep,2,min)
-yrepmax=apply(yrep,2,max)
-yrepmedian=apply(yrep,2,median)
-yrepskewness=apply(yrep,2,skewness)
-yrepkurtosis=apply(yrep,2,kurtosis)
-
+yrepmin=apply(yrep,2,min, na.rm = TRUE)
+yrepmax=apply(yrep,2,max, na.rm = TRUE)
+yrepmedian=apply(yrep,2,median, na.rm = TRUE)
 #Predictive checks using replicated data - minimum
-hist(yrepmin,col="gray40")
-abline(v=min(y),col="red",lwd=2)
+hist(yrepmin,col="gray40", xlim=c(7.9,8.3))
+abline(v=min(x, na.rm=TRUE),col="red",lwd=2)
+hist(yrepmax,col="gray40")
+abline(v=max(x, na.rm=TRUE),col="red",lwd=2)
+hist(yrepmedian,col="gray40")
+abline(v=median(x, na.rm=TRUE),col="red",lwd=2)
 ```
+
+```{r 2a}
+house <- read.csv(file = 'Real_estate.csv')
+# head(house)
+temp <- house[c(1,8)]
+house <- as.data.frame(scale(house[c(-1,-8)]))
+house <- cbind(temp[1], house)
+house.c <- cbind(house, temp[2])
+house.c
+
+
+
+# house2 <- read.csv(file = 'Real_estate.csv')
+# n = nrow(house2)
+# ones = rep(1, n)
+# H = diag(n) - (1/n) * (ones %*% t(ones))
+# 
+# m = ncol(house2)
+# ones.0 = rep(1, m)
+# H.0 = diag(m) - 1/m * (ones.0 %*% t(ones.0))
+# house2 <- as.data.frame(H %*% as.matrix(house2) %*% H.0)
+# 
+# 
+# house2
+```
+
+
+
+
+
+
+
+
+
+
