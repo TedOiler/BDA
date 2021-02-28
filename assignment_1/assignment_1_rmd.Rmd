@@ -10,6 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 rm(list = ls())
 library(MARSS)
 library(rjags)
+require(fBasics)
 ```
 
 ```{r b}
@@ -141,25 +142,27 @@ acf(res1[[1]][,"ita2"])
 ```{r f}
 p.years <- as.matrix(cbind(seq(1998,2050,by=1), rep(NA,53)),ncol=2,byrow=FALSE)
 graywhales.p <- rbind(graywhales, p.years)
-n=dim(graywhales.p)[1]
-coef = c('x')
+n.p=dim(graywhales.p)[1]
+coef.p = c('x')
 
-jm0 = jags.model(textConnection(model0), data=list(n=n, y=log(graywhales.p[,2])), n.chains=3)
-update(jm0, burn.in, progress.bar='none')
-res = coda.samples(jm0, variable.names=coef, n.iter=5e6, thin=500)
-summary(res)
+jm.p = jags.model(textConnection(model0), data=list(n=n.p, y=log(graywhales.p[,2])), n.chains=3)
+update(jm.p, burn.in, progress.bar='none')
+res.p = coda.samples(jm.p, variable.names=coef.p, n.iter=5e3, thin=500)
+summary(res.p)
 
-plot(graywhales.p[,1], summary(res)[[1]][,1],
+length(summary(res.p)[[1]][,1])
+
+plot(graywhales.p[,1], summary(res.p)[[1]][,1],
      ylab='Log population',
      xlab='Years',
      type='l',
      col='blue4',
      ylim=c(7.9,12.5))
-lines(graywhales.p[,1], summary(res)[[2]][,1],
+lines(graywhales.p[,1], summary(res.p)[[2]][,1],
       lty=2,
       col='pink',
       lwd=2)
-lines(graywhales.p[,1], summary(res)[[2]][,5],
+lines(graywhales.p[,1], summary(res.p)[[2]][,5],
       lty=2,
       col='pink',
       lwd=2)
@@ -172,5 +175,27 @@ legend('topleft', legend=c("log-population", "95% symetric CI"),
 ```
 
 ```{r g}
+#predictive checks
+#replicated data
+res.mat=as.matrix(res)
+res.mat
+beta=res.mat[,1]; sigma2=res.mat[,3]; u=res.mat[,4]
+niterf=nrow(res.mat)
+yrep=matrix(0,nrow=n,ncol=niterf)
+for(l in 1:niterf){
+  for(i in 1:n){
+    yrep[i,l]=rnorm(1,beta[l]*x[i,1]+u,sigma[l])  
+  }  
+}
 
+#statistics of interest in this case (and different from the ones included in the model)
+yrepmin=apply(yrep,2,min)
+yrepmax=apply(yrep,2,max)
+yrepmedian=apply(yrep,2,median)
+yrepskewness=apply(yrep,2,skewness)
+yrepkurtosis=apply(yrep,2,kurtosis)
+
+#Predictive checks using replicated data - minimum
+hist(yrepmin,col="gray40")
+abline(v=min(y),col="red",lwd=2)
 ```
