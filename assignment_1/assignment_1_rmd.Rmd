@@ -148,7 +148,7 @@ coef.p = c('x')
 
 jm.p = jags.model(textConnection(model0), data=list(n=n.p, y=log(graywhales.p[,2])), n.chains=3)
 update(jm.p, burn.in, progress.bar='none')
-res.p = coda.samples(jm.p, variable.names=coef.p, n.iter=5e6, thin=500)
+res.p = coda.samples(jm.p, variable.names=coef.p, n.iter=5e3, thin=500)
 summary(res.p)
 
 length(summary(res.p)[[1]][,1])
@@ -237,7 +237,7 @@ lin.mod0 <- lm(log(house.c$Y.house.price.of.unit.area) ~
 lin.mod0$coefficients
 mse.mod0 <- sqrt(sum(lin.mod0$residuals^2))
 mse.mod0
-
+summary(lin.mod0)
 ```
 
 ```{r 2b}
@@ -247,8 +247,9 @@ temp <- house[c(1,8)]
 house <- as.data.frame(scale(house[c(-1,-8)]))
 house <- cbind(temp[1], house)
 house.c <- cbind(house, temp[2])
-house.c
 beta.prec <- 1/1e6
+
+house.c
 
 x1 <- house.c$X1.transaction.date
 x2 <- house.c$X2.house.age
@@ -267,27 +268,48 @@ prior.beta <- list(mean.intercept = 0, prec.intercept = beta.prec,
 lin.mod1 <- inla(y ~ x1 + x2 + x3 + x4 + x5 + x6,
             data=data,
             control.family=list(hyper=prec.prior),
-            control.fixed=prior.beta)
+            control.fixed=prior.beta,
+            control.compute=list(cpo=TRUE, dic=TRUE))
 
 summary(lin.mod1)
-plot(lin.mod1$marginals.fixed$`(Intercept)`, type ="l",xlab="x",ylab="Density",
-main='Posterior density of beta0')
-plot(lin.mod1$marginals.fixed$x1, type ="l",xlab="x",ylab="Density",
-main='Posterior density of beta1')
-plot(lin.mod1$marginals.fixed$x2, type ="l",xlab="x",ylab="Density",
-main='Posterior density of beta2')
-plot(lin.mod1$marginals.fixed$x3, type ="l",xlab="x",ylab="Density",
-main='Posterior density of beta3')
-plot(lin.mod1$marginals.fixed$x4, type ="l",xlab="x",ylab="Density",
-main='Posterior density of beta4')
-plot(lin.mod1$marginals.fixed$x5, type ="l",xlab="x",ylab="Density",
-main='Posterior density of beta5')
-plot(lin.mod1$marginals.fixed$x6, type ="l",xlab="x",ylab="Density",
-main='Posterior density of beta6')
+
+plot(lin.mod1$marginals.fixed$`(Intercept)`, type="l",xlab="beta0",ylab="Density",main='Posterior density of beta0')
+plot(lin.mod1$marginals.fixed$x1,            type="l",xlab="beta1",ylab="Density",main='Posterior density of beta1')
+plot(lin.mod1$marginals.fixed$x2,            type="l",xlab="beta2",ylab="Density",main='Posterior density of beta2')
+plot(lin.mod1$marginals.fixed$x3,            type="l",xlab="beta3",ylab="Density",main='Posterior density of beta3')
+plot(lin.mod1$marginals.fixed$x4,            type="l",xlab="beta4",ylab="Density",main='Posterior density of beta4')
+plot(lin.mod1$marginals.fixed$x5,            type="l",xlab="beta5",ylab="Density",main='Posterior density of beta5')
+plot(lin.mod1$marginals.fixed$x6,            type="l",xlab="beta6",ylab="Density",main='Posterior density of beta6')
+
+cat("NSLCPO of model 1:",-sum(log(lin.mod1$cpo$cpo)),"\n")
+
+res1 <- lin.mod1$summary.fitted.values$mean - y
+sd.mean.res <- sd(res1)
+sd.mean.res
+
+# marginal.tau=lin.mod1$marginals.hyperpar[[1]]
+# marginal.sigma2 <- inla.tmarginal(function(tau) tau^(-1), marginal.tau)
+# plot(marginal.sigma2, type='l',
+#      xlab="x",
+#      ylab="Density",
+#      main="Posterior density of sigma2")
 ```
 
 ```{r 2c}
+n.post <- 1e4
+lin.mod1I <- inla(y ~ x1 + x2 + x3 + x4 + x5 + x6,
+            data=data,
+            control.family=list(hyper=prec.prior),
+            control.fixed=prior.beta,
+            control.compute=list(config=TRUE),
+            control.predictor = list(compute = TRUE))
+lin.mod1L.post <- inla.posterior.sample(n.post, lin.mod1I)
+fittedvalues=inla.posterior.sample.eval(function(...) {Predictor},lin.mod1L.post)
+ymx=as.matrix(y)%*%matrix(1,nrow=1,ncol=n.post)
 
+studentised.res <- ymx-fittedvalues
+studentised.res
+qqnorm(studentised.res)
 ```
 
 ```{r 2d}
