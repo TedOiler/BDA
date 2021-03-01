@@ -312,7 +312,11 @@ ymx <- as.matrix(y)%*%matrix(1,nrow=1,ncol=n.post)
 x <- cbind(rep(1,n),x1,x2,x3,x4,x5,x6)
 H <- x%*%solve((t(x)%*%x))%*%t(x)
 
-studentised.res <- ymx-fittedvalues
+y.log <- log(data$y)
+ymx <- as.matrix(y.log)%*%matrix(1,nrow=1,ncol=n.post)
+
+studentised.res <- y - fittedvalues
+
 for(l in 1:n.post){
   studentised.res[,l]=studentised.res[,l]/sigma[l];
 }
@@ -327,109 +331,34 @@ for(i in 1:n){
 
 #Plot of posterior mean studentised residual versus observation number.
 par(mfrow=c(1,2))
-plot(seq_along(studentised.res.m),studentised.res.m,xlab="Index",ylab="Bayesian studentised residual")
-plot(seq_along(studentised.res.m),rowMeans(fittedvalues),xlab="Index",ylab="Bayesian studentised residual")
+qqnorm(studentised.res.m, lwd=2,xlab="Index", ylab="Bayesian studentised residual")
+plot(seq_along(studentised.res.m), rowMeans(fittedvalues), xlab="Fitted Values", ylab="Bayesian studentised residual", main="Residuals against fitted vlues")
 
 ```
-```{r test}
-require(LearnBayes)
-data(birdextinct)
-n   <- nrow(birdextinct)
-extinct.time <- birdextinct$time
-avg.no.nests <- birdextinct$nesting
-size  <- birdextinct$size   # 0 = large, 1= small
-migratory   <- birdextinct$status # 0 = mig, 1=resident
-
-log.extinct <- log(extinct.time)
-nest.ctr <- avg.no.nests-mean(avg.no.nests)
-extinct.ctr.mlr <- lm(log.extinct~ nest.ctr+size+migratory)
-summary(extinct.ctr.mlr)
-
-migratory.prec.prior <- list(prec=list(prior = "loggamma", param = c(0.01, 0.01)))
-
-migratory.prior.beta <- list(mean.intercept = 0, prec.intercept = 1e-5,
-                    mean = 0, prec = 1e-5)
-
-data=data.frame(log.extinct,nest.ctr,size,migratory)
-
-extinct.m1I <- inla(log.extinct~ nest.ctr+size+migratory,family="gaussian",data=data,control.family=list(hyper=migratory.prec.prior),control.fixed=migratory.prior.beta)
-summary(extinct.m1I)
-extinct.marg.sigma <- inla.tmarginal(function(tau) tau^(-1/2),
-  extinct.m1I$marginals.hyperpar$`Precision for the Gaussian observations`)
-#Summary statistics of sigma
-cat("Summary statistics of sigma for extinct dataset")
-inla.zmarginal(extinct.marg.sigma)
-
-#Posterior predictive checks. 
-#First,we rerun the model and obtain samples from the posterior
-extinct.m1I <- inla(log.extinct~ nest.ctr+size+migratory,data=data,control.family=list(hyper=migratory.prec.prior),
-                    control.fixed=migratory.prior.beta, control.predictor = list(compute = TRUE),control.compute = list(config = TRUE))
-nbsamp=10000
-extinct.samp <- inla.posterior.sample(nbsamp, extinct.m1I)
-
-# #print(extinct.samp[[1]])
-# beta0=rep(0,nbsamp);beta1=rep(1,nbsamp);beta2=rep(0,nbsamp);beta3=rep(0,nbsamp);
-# sigma=rep(0,nbsamp);
-
-
-beta0=inla.posterior.sample.eval(function(...) {(Intercept)},
-  extinct.samp)
-beta1=inla.posterior.sample.eval(function(...) {nest.ctr},
-  extinct.samp)
-beta2=inla.posterior.sample.eval(function(...) {size},
-  extinct.samp)
-beta3=inla.posterior.sample.eval(function(...) {migratory},
-  extinct.samp)
-
-sigma=1/sqrt(inla.posterior.sample.eval(function(...) {theta},
-  extinct.samp))
-
-#In this model the link function is the identity, so fitted values are the same as the linear predictors 
-#(E(y_i|x,theta)=mu_i=eta_i)
-
-fittedvalues=inla.posterior.sample.eval(function(...) {Predictor},
-extinct.samp)
-
-length(fittedvalues)
-
-n=nrow(data)
-x=cbind(rep(1,n),nest.ctr,size,migratory)
-H=x%*%solve((t(x)%*%x))%*%t(x)
-
-#studentised residuals
-#n is the number of rows in the dataset, i.e. the number of observations
-#studentised residuals
-studentisedred=matrix(0,nrow=n,ncol=nbsamp)
-
-#create a matrix of size n * nbsamp, repeating y in each column
-y=data$log.extinct
-ymx=as.matrix(y)%*%matrix(1,nrow=1,ncol=nbsamp);
-
-studentisedred=ymx-fittedvalues;
-
-for(l in 1:nbsamp){
-  studentisedred[,l]=studentisedred[,l]/sigma[l];
-}
-
-for(i in 1:n){
-  studentisedred[i,]=studentisedred[i,]/sqrt(1-H[i,i]);
-}
-
-
-#posterior mean of studentised residuals
-studentisedredm=numeric(n)
-for(i in 1:n){
-  studentisedredm[i]=mean(studentisedred[i,])  
-}
-
-#Plot of posterior mean studentised residual versus observation number.
-par(mfrow=c(1,1))
-plot(seq_along(studentisedredm),studentisedredm,xlab="Index",ylab="Bayesian studentised residual",ylim=c(-3,3))
-```
-
 
 ```{r 2d}
+#Setting the priors for Student's t distribution
+prior.t.rob <- list(prec=list(prior = "loggamma", param = c(0.1, 0.1)), dof = list(prior = "loggamma",param = c(1,1)) ) 
+prior.beta.rob <- list(mean.intercept = 0, prec.intercept = 1/1e6,
+                    mean = 0, prec = 1/1e6)
 
+data <- data.frame(data)
+lin.mod1.rob <- inla(y ~ x1 + x2 + x3 + x4 + x5 + x6,
+                     family="T",
+                     data=data,
+                     control.family=list(hyper=prior.t.rob),
+                     control.fixed=prior.beta.rob,
+                     control.compute=list(cpo=TRUE, dic=TRUE))
+
+summary(lin.mod1.rob)
+
+lin.mod1.rob$marginals.hyper$`degrees of freedom for student-t`
+
+plot(lin.mod1.rob$marginals.hyper$`degrees of freedom for student-t`,
+     type ="l",
+     xlab="x",
+     ylab="Density",
+     main='Posterior density of dof parameter nu for robust regression')
 ```
 
 ```{r 2e}
