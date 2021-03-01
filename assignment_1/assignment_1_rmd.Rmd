@@ -351,7 +351,6 @@ lin.mod1.rob <- inla(y ~ x1 + x2 + x3 + x4 + x5 + x6,
                      control.compute=list(cpo=TRUE, dic=TRUE))
 
 summary(lin.mod1.rob)
-lin.mod1.rob$re
 lin.mod1.rob$marginals.hyper$`degrees of freedom for student-t`
 
 plot(lin.mod1.rob$marginals.hyper$`degrees of freedom for student-t`,
@@ -366,19 +365,72 @@ cat("NSLCPO of robust model:",-sum(log(lin.mod1.rob$cpo$cpo)),"\n")
 cat("DIC of robust model:",lin.mod1.rob$dic$dic,"\n")
 
 res2 <- lin.mod1.rob$summary.fitted.values$mean - y
-sd.mean.res <- sd(res1)
+sd.mean.res <- sd(res2)
 sd.mean.res
 ```
 
 ```{r 2e}
 house.fac <- house.or
-house.fac.x4 <- as.factor(house.fac[5])
-house.fac <- house.fac[-5]
-print(house.fac.x4)
+house.fac.x4 <- as.factor(house.fac$X4.number.of.convenience.stores)
+data <- data.frame(y,x1,x2,x3,house.fac.x4,x5,x6)
+
+n <- nrow(data)
+prec.prior <- list(prec=list(prior = "loggamma", param = c(0.1, 0.1)))
+prior.beta <- list(mean.intercept = 0, prec.intercept = beta.prec,
+                    mean = 0, prec = beta.prec)
+
+lin.mod1.fac <- inla(y ~ x1 + x2 + x3 + house.fac.x4 + x5 + x6,
+            data=data,
+            control.family=list(hyper=prec.prior),
+            control.fixed=prior.beta,
+            control.compute=list(cpo=TRUE, dic=TRUE))
+
+prior.t.rob <- list(prec=list(prior = "loggamma", param = c(0.1, 0.1)), dof = list(prior = "loggamma",param = c(1,1)) ) 
+prior.beta.rob <- list(mean.intercept = 0, prec.intercept = 1/1e6,
+                    mean = 0, prec = 1/1e6)
+
+lin.mod1.rob.fac <- inla(y ~ x1 + x2 + x3 + house.fac.x4 + x5 + x6,
+                         family="T",
+                         data=data,
+                         control.family=list(hyper=prior.t.rob),
+                         control.fixed=prior.beta.rob,
+                         control.compute=list(cpo=TRUE, dic=TRUE))
+
+summary(lin.mod1.fac)
+summary(lin.mod1.rob.fac)
+
+cat("NSLCPO of factor simple model:",-sum(log(lin.mod1.fac$cpo$cpo)),"\n")
+cat("NSLCPO of factor robust model:",-sum(log(lin.mod1.rob.fac$cpo$cpo)),"\n")
+
+res.frac1 <- lin.mod1.fac$summary.fitted.values$mean - y
+sd.mean.res.frac1 <- sd(res.frac1)
+res.frac2 <- lin.mod1.rob.fac$summary.fitted.values$mean - y
+sd.mean.res.frac2 <- sd(res.frac2)
+
+sd.mean.res.frac1
+sd.mean.res.frac2
 ```
 
 ```{r 2f}
+prior.t.rob <- list(prec=list(prior = "loggamma", param = c(0.1, 0.1)), dof = list(prior = "loggamma",param = c(1,1)) ) 
+prior.beta.rob <- list(mean.intercept = 0, prec.intercept = 1/1e6,
+                    mean = 0, prec = 1/1e6)
+data <- data.frame(y,x1,x2,x3,house.fac.x4,x5,x6)
 
+lin.mod.final <- inla(y ~ x1 + x2 + x3 + house.fac.x4 + x5 + x6,
+                      family="T",
+                      data=data,
+                      control.family=list(hyper=prior.t.rob),
+                      control.fixed=prior.beta.rob,
+                      control.compute=list(cpo=TRUE, dic=TRUE))
+
+# summary(lin.mod.final)
+
+cat("NSLCPO of factor simple model:",-sum(log(lin.mod.final$cpo$cpo)),"\n")
+cat("DIC of robust model:",lin.mod.final$dic$dic,"\n")
+
+res.frac1 <- lin.mod.final$summary.fitted.values$mean - y
+sd.mean.res.frac1 <- sd(res.frac1)
 ```
 
 ```{r 2g}
