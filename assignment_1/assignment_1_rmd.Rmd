@@ -417,22 +417,85 @@ prior.beta.rob <- list(mean.intercept = 0, prec.intercept = 1/1e6,
                     mean = 0, prec = 1/1e6)
 data <- data.frame(y,x1,x2,x3,house.fac.x4,x5,x6)
 
-lin.mod.final <- inla(y ~ x1 + x2 + x3 + house.fac.x4 + x5 + x6,
+lin.mod.final <- inla(y ~ x1 + x2 + x3 + house.fac.x4 + x5 + x6 + 
+                        I(x1^2) + I(x2^2) + I(x3^2) + I(x5^2) + I(x6^2),
                       family="T",
                       data=data,
                       control.family=list(hyper=prior.t.rob),
                       control.fixed=prior.beta.rob,
-                      control.compute=list(cpo=TRUE, dic=TRUE))
+                      control.compute=list(cpo=TRUE, dic=TRUE, config=TRUE))
 
 # summary(lin.mod.final)
 
 cat("NSLCPO of factor simple model:",-sum(log(lin.mod.final$cpo$cpo)),"\n")
 cat("DIC of robust model:",lin.mod.final$dic$dic,"\n")
 
-res.frac1 <- lin.mod.final$summary.fitted.values$mean - y
-sd.mean.res.frac1 <- sd(res.frac1)
+res.final <- lin.mod.final$summary.fitted.values$mean - y
+sd.res.final <- sd(res.final)
+sd.res.final
 ```
 
 ```{r 2g}
+X <- data.frame(cbind(house$X1.transaction.date,
+                       house$X2.house.age,
+                       house$X3.distance.to.the.nearest.MRT.station,
+                       as.factor(house$X4.number.of.convenience.stores),
+                       house$X5.latitude,
+                       house$X6.longitude))
+y <- data.frame(house$Y.house.price.of.unit.area)
 
+y <- rbind(y, NA)
+y <- rbind(y, NA)
+y <- rbind(y, NA)
+
+r1 <- c(2013,
+        2020-2013,
+        mean(house$X3.distance.to.the.nearest.MRT.station),
+        floor(unique(house$X4.number.of.convenience.stores)[which.max(tabulate(match(house$X4.number.of.convenience.stores,
+                                                                               unique(house$X4.number.of.convenience.stores))))]),
+        mean(house$X5.latitude),
+        mean(house$X6.longitude))
+
+r2 <- c(2014,
+        2020-2014,
+        mean(house$X3.distance.to.the.nearest.MRT.station),
+        floor(unique(house$X4.number.of.convenience.stores)[which.max(tabulate(match(house$X4.number.of.convenience.stores,
+                                                                               unique(house$X4.number.of.convenience.stores))))]),
+        mean(house$X5.latitude),
+        mean(house$X6.longitude))
+
+r3 <- c(2014,
+        2020-2014,
+        mean(house$X3.distance.to.the.nearest.MRT.station),
+        floor(unique(house$X4.number.of.convenience.stores)[which.max(tabulate(match(house$X4.number.of.convenience.stores,
+                                                                               unique(house$X4.number.of.convenience.stores))))]),
+        mean(house$X5.latitude),
+        mean(house$X6.longitude))
+
+X <- rbind(X, r1)
+X <- rbind(X, r2)
+X <- rbind(X, r3)
+
+
+data <- scale(cbind(X[-4], y))
+data <- data.frame(cbind(data, X[4]))[,c(1,2,3,7,4,5,6)]
+data
+
+lin.mod.final <- inla(data$house.Y.house.price.of.unit.area ~ data$X1 + data$X2 + data$X3 + data$X4 + data$X5 + data$X6 + 
+                        I(data$X1^2) + I(data$X2^2) + I(data$X3^2) + I(data$X5^2) + I(data$X6^2),
+                      family="T",
+                      data=data,
+                      control.family=list(hyper=prior.t.rob),
+                      control.fixed=prior.beta.rob,
+                      control.compute=list(cpo=TRUE, dic=TRUE, config=TRUE))
+
+nbsamp=1e4
+final.samp=inla.posterior.sample(n=nbsamp, result=lin.mod.final,selection = list(Predictor=415:417))
+predictor.samples=inla.posterior.sample.eval(function(...) {Predictor},final.samp)
+sigma.samples=1/sqrt(inla.posterior.sample.eval(function(...) {theta},final.samp))
+
+post.pred.samples=predictor.samples+rnorm(nbsamp, mean=0,sd=sigma.samples)
+
+plot(density(post.pred.samples),type ="l",xlab="logprice",ylab="Density",
+main='Posterior predictive density')
 ```
