@@ -177,15 +177,15 @@ DIC transformed: $-231.32$
 
 MSE transformed: $0.203$
 
-The NSLCPO score shows a significant improvent over all other models, which is also apparent on the MSE score of the model. Summary statistics are presented below. At this point a very important caveat needs to be mentioned. Up until now we are only considering in sample \it{goodness of fit} measures. That means that there is a chance that we have overfitted our model to our observed data. In order to check that we could compute all the above quantinties on a held-out set, or even perform a k-fold cross validation. This is left for further development of the model.
+The NSLCPO score shows a significant improvent over all other models, which is also apparent on the MSE score of the model. Summary statistics are presented below. At this point a very important caveat needs to be mentioned. Up until now we are only considering in sample \textit{goodness of fit} measures. That means that there is a chance that we have overfitted our model to our observed data. In order to check that we could compute all the above quantinties on a held-out set, or even perform a k-fold cross validation. This is left for further development of the model.
 
 Results:
 
 \includegraphics[scale=0.440]{./images/2_table6.png}
 
 \item
-Explanation: Finally, using our original model from part (b), we will predict the prices for the three next years
-
+Explanation: Finally, using our original model from part (b), we will predict the prices for the three next years. Firstly 3 new rows where created and binded to the dataset with NA on the column of price for prediction. The values for the features where the average of the columns, except for the transaction date column, which was 2014, 2015 and 2016 for the 3 rows (the years we want to predict) and the house age, which was calculated as 2020-(transaction date).
+The mean values the three years are: 2938.587, 2943.112, 2947.637. This prices are not correct however, and further root cause analysis needs to be conducted in order to understand why these values have been produced. Below is the final Posterior predictive Density produces by the final model.
 
 
 Results:
