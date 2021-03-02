@@ -42,10 +42,10 @@ model0 = "model{
 
 n=dim(graywhales)[1]
 coef = c('beta','u','sigma2','ita2')
-burn.in = 2*1e3
+burn.in = 2e3
 jm0 = jags.model(textConnection(model0), data=list(n=n, y=log(graywhales[,2])), n.chains=3)
 update(jm0, burn.in, progress.bar='none')
-res = coda.samples(jm0, variable.names=coef, n.iter=5e3, thin=500)
+res = coda.samples(jm0, variable.names=coef, n.iter=7e5, thin=500)
 ```
 
 ```{r 1c}
@@ -127,7 +127,7 @@ update(jm1,
        progress.bar='none')
 res1 = coda.samples(jm1,
                    variable.names=coef,
-                   n.iter=5e3,
+                   n.iter=7e5,
                    thin=500)
 
 summary(res1)
@@ -171,8 +171,7 @@ legend('topleft', legend=c("log-population", "95% symetric CI"),
        col=c("blue4", "pink"),
        lty=c(1,2,2),
        cex=0.8)
-
-# probability calculation pending
+mean(res.p[[1]]<=log(100))
 ```
 
 ```{r 1g}
@@ -208,25 +207,11 @@ abline(v=median(x, na.rm=TRUE),col="red",lwd=2)
 ```{r 2a}
 house.or <- read.csv(file = 'Real_estate.csv')
 house <- house.or
-# head(house)
 temp <- house[c(1,8)]
 house <- as.data.frame(scale(house[c(-1,-8)]))
 house <- cbind(temp[1], house)
 house.c <- cbind(house, temp[2])
 house.c
-
-# # manually centering the data matrix
-# house2 <- read.csv(file = 'Real_estate.csv')
-# n = nrow(house2)
-# ones = rep(1, n)
-# H = diag(n) - (1/n) * (ones %*% t(ones))
-# 
-# m = ncol(house2)
-# ones.0 = rep(1, m)
-# H.0 = diag(m) - 1/m * (ones.0 %*% t(ones.0))
-# house2 <- as.data.frame(H %*% as.matrix(house2) %*% H.0)
-# 
-# house2
 
 lin.mod0 <- lm(log(house.c$Y.house.price.of.unit.area) ~ 
                 house.c$X1.transaction.date +
@@ -243,7 +228,6 @@ summary(lin.mod0)
 
 ```{r 2b}
 house <- read.csv(file = 'Real_estate.csv')
-# head(house)
 temp <- house[c(1,8)]
 house <- as.data.frame(scale(house[c(-1,-8)]))
 house <- cbind(temp[1], house, temp[2])
@@ -296,13 +280,18 @@ sd.mean.res
 ```
 
 ```{r 2c}
-n.post <- 1e2
+n.post <- 1e5
+
+prec.prior <- list(prec=list(prior = "loggamma", param = c(0.1, 0.1)))
+prior.beta <- list(mean.intercept = 0, prec.intercept = beta.prec,
+                    mean = 0, prec = beta.prec)
+
 lin.mod1I <- inla(y ~ x1 + x2 + x3 + x4 + x5 + x6,
-            data=data,
+            data=data.frame(y,x1,x2,x3,x4,x5,x6),
             control.family=list(hyper=prec.prior),
             control.fixed=prior.beta,
-            control.compute=list(config=TRUE),
-            control.predictor = list(compute = TRUE))
+            control.predictor = list(compute = TRUE),
+            control.compute=list(config=TRUE))
 
 lin.mod1L.post <- inla.posterior.sample(n.post, lin.mod1I)
 
@@ -326,14 +315,15 @@ for(i in 1:n){
 #posterior mean of studentised residuals
 studentised.res.m=numeric(n)
 for(i in 1:n){
-  studentised.res[i]=mean(studentised.res[i,])  
+  studentised.res.m[i]=mean(studentised.res[i,])  
 }
 
 #Plot of posterior mean studentised residual versus observation number.
-par(mfrow=c(1,2))
+par(mfrow=c(3,1))
 qqnorm(studentised.res.m, lwd=2,xlab="Index", ylab="Bayesian studentised residual")
+abline(a=0,b=1, col='red4')
 plot(seq_along(studentised.res.m), rowMeans(fittedvalues), xlab="Fitted Values", ylab="Bayesian studentised residual", main="Residuals against fitted vlues")
-
+plot(seq_along(studentised.res.m), studentised.res.m, xlab="Fitted Values", ylab="Bayesian studentised residual", main="Residuals against fitted vlues")
 ```
 
 ```{r 2d}
@@ -442,21 +432,13 @@ X <- data.frame(cbind(house$X1.transaction.date,
                        as.factor(house$X4.number.of.convenience.stores),
                        house$X5.latitude,
                        house$X6.longitude))
-y <- data.frame(house$Y.house.price.of.unit.area)
+y <- data.frame(house$Y.house.price.of.unit.area) 
 
 y <- rbind(y, NA)
 y <- rbind(y, NA)
 y <- rbind(y, NA)
 
-r1 <- c(2013,
-        2020-2013,
-        mean(house$X3.distance.to.the.nearest.MRT.station),
-        floor(unique(house$X4.number.of.convenience.stores)[which.max(tabulate(match(house$X4.number.of.convenience.stores,
-                                                                               unique(house$X4.number.of.convenience.stores))))]),
-        mean(house$X5.latitude),
-        mean(house$X6.longitude))
-
-r2 <- c(2014,
+r1 <- c(2014,
         2020-2014,
         mean(house$X3.distance.to.the.nearest.MRT.station),
         floor(unique(house$X4.number.of.convenience.stores)[which.max(tabulate(match(house$X4.number.of.convenience.stores,
@@ -464,8 +446,16 @@ r2 <- c(2014,
         mean(house$X5.latitude),
         mean(house$X6.longitude))
 
-r3 <- c(2014,
-        2020-2014,
+r2 <- c(2015,
+        2020-2015,
+        mean(house$X3.distance.to.the.nearest.MRT.station),
+        floor(unique(house$X4.number.of.convenience.stores)[which.max(tabulate(match(house$X4.number.of.convenience.stores,
+                                                                               unique(house$X4.number.of.convenience.stores))))]),
+        mean(house$X5.latitude),
+        mean(house$X6.longitude))
+
+r3 <- c(2016,
+        2020-2016,
         mean(house$X3.distance.to.the.nearest.MRT.station),
         floor(unique(house$X4.number.of.convenience.stores)[which.max(tabulate(match(house$X4.number.of.convenience.stores,
                                                                                unique(house$X4.number.of.convenience.stores))))]),
@@ -479,12 +469,12 @@ X <- rbind(X, r3)
 
 data <- scale(cbind(X[-4], y))
 data <- data.frame(cbind(data, X[4]))[,c(1,2,3,7,4,5,6)]
-data
+x4 <- as.factor(data$X4)
 
-lin.mod.final <- inla(data$house.Y.house.price.of.unit.area ~ data$X1 + data$X2 + data$X3 + data$X4 + data$X5 + data$X6 + 
+lin.mod.final <- inla(y ~ data$X1 + data$X2 + data$X3 + x4 + data$X5 + data$X6 + 
                         I(data$X1^2) + I(data$X2^2) + I(data$X3^2) + I(data$X5^2) + I(data$X6^2),
                       family="T",
-                      data=data,
+                      data=data.frame(cbind(data, x4)),
                       control.family=list(hyper=prior.t.rob),
                       control.fixed=prior.beta.rob,
                       control.compute=list(cpo=TRUE, dic=TRUE, config=TRUE))
