@@ -105,39 +105,93 @@ Results:
 \noindent\textbf{2)}
 \begin{enumerate}[(a)]
 \item
-Explanation:
+Explanation: In this problem, the aim is to model house prices per unit area from recent transactions in Taipei. Our dataset consists of 414 rows of 6 features (house age, distance from nearest MRT (metro) station in meters, number of convenience stores within walking distance, latidude, longitude and the target of the price). First of all, the data matrix was centered. That means that for every feature, its mean has been subtracted in order to shift their distribution to have a zero mean, and then each value have been divided by their standard deviation in order to make every feature to have a unit variance. Then since we will again work on the log scale, the target variable of the price has been converted to log-price. Then a standard linear regression was fit, with the defaults \textsf{lm} function of \textsf{R}. This was done to have a benchmark. Later, more complicated models can be fit and their quality of fit can be compared to the standard linear regression. 
 
 Results:
+
+\includegraphics[scale=0.28]{./images/2_table0.png}
+
 
 \item
-Explanation:
+Explanation: For the purposes of this problem, an Integrated Nested Laplace Approximation (INLA) model was choosen. The posterior of the model, was a $\text{Gamma}(0.1,0.1)$ and the Gaussian prior with mena zero and variance $1e6$ was choosen in order to represent prior ignorance of the value of the parameters of the model. The mean standard error of the fit was $4.47$. More summary statistics are presented in the Results section. This model, immidiately had a very positive effect in the standard deviation of the mean residuals of the model, since it is $0.22$. The negative sum log of the conditional predictive ordinate (NSLCPO) was also produced and it is $-28.78$. 
+
+Finally, a plot of the posterior density for the variance parameter $\sigma^2$ is also shown below. The figure shows that the variance parameter $\sigma^2$ has a mean value of around $0.05$ with a very high confidence, since we can see that most of the density on the diagram is on the interval $\{0.04, 0.06\}$. So we are fairly sure that a small, non-zero variance exist in the noise parameter of the model.
 
 Results:
+
+\includegraphics[scale=0.5]{./images/post.jpg}
+
+
 
 \item
-Explanation:
+Explanation: Next we evaluate the fit of the model, by producing multiple plots for the residuals of the fit. On the first diagram we see the normal quantile-quantile plot for the Bayesian studentized residuals of the fit. In red we see the line of 45 degrees. We can observe that almost all the residuals fall onto this line, and that means that the distribution of the residuals is not far from a Normal distribution. So our error term has a Normal distribution and our assumption of homoskedasticity holds. On the next diagrams we see the Bayesian studentized residuals against the fitted values. This plot was done in order to check if any patterns are aparent. That would indicate that there is some correlation between the residuals and the fitted values which is another important assumption of our linear model. It is clear that no apparent pattern emerges from this diagram so we can continue with our analysis.
 
 Results:
+
+\includegraphics[scale=0.5]{./images/2_Figure1_qq.png}
+
 
 \item
-Explanation:
+Explanation: Next, a robust to outliers version of the model was considered. This has exactly the same priors as the original model discribed in (b). The NSLCPO score of the model was $-77.9$, which is lower than the first model, indicating a better fit. The corresponding DIC value was $-157.09$ and the standard deviation of the mean residuals was $0.222$ which also indicated a better fit. On the results section there are two posterior density graphs, one for the degrees of freedom and another of $\sigma^2$ as before. We can clearly see that the mean value for the degrees of freedom is around $3$, which indicated that there are some outliers skew the Student-t distribution. Lastly, we see a small increase of the mean variance. This is expected, as we are not using the information of some data points due to the robust regression. 
+The summary statistic is also included below. 
 
 Results:
+
+\includegraphics[scale=0.25]{./images/2_Figure2_df.png}
+\includegraphics[scale=0.440]{./images/posterior.jpg}
+
+\includegraphics[scale=0.440]{./images/2_table3.png}
+d
+\item
+Explanation: The next step was to consider our variable $x_4$ (number of convenience stores within walking distance) as a categorical variable with multiple factors. We then fitted the two models (simple and robust) with the new modified variable in order to check whether this change will affect the model in a positive way. 
+
+NSLCPO simple: $-28.02$ 
+
+NSLCPO robust: $-84.45$
+
+MSE simple: $0.2155$
+
+MSE robust: $0.2172$
+
+It is clear from the NSLCPO score, that the best model so far, is the one with $x_4$ as a categorical variable and with robust regression as this produces the lowest overal NSLCPO score.
+Lastly, the Mean standard deviation of the mean residuals of both models is lower than the previous one. The non-robust model seems to have a bit lower MSE, but this is obvious only on the third significant digit. 
+
+Below you can find summary statistics for both models.
+
+Results:
+
+\includegraphics[scale=0.440]{./images/2_table4.png}
+\includegraphics[scale=0.440]{./images/2_table5.png}
+
 
 \item
-Explanation:
+Explanation: Lastly a non linear in feature model was considered to explore the possibility of non-linear relationship in the data. The model that we considered is the following: 
+
+$\hat{y} = \hat{\beta_0} + \hat{\beta_1}x_1 + ... + \hat{\beta_6}x_6 + \hat{\beta_7}x_1^2 + \hat{\beta_8}x_2^2 + \hat{\beta_8}x_3^2 + \hat{\beta_9}x_5^2 + \hat{\beta_{10}}x_6^2$
+
+Essentially taking into consideration a relationship of second degree. 
+
+NSLCPO transformed: $-112.82$
+
+DIC transformed: $-231.32$
+
+MSE transformed: $0.203$
+
+The NSLCPO score shows a significant improvent over all other models, which is also apparent on the MSE score of the model. Summary statistics are presented below. At this point a very important caveat needs to be mentioned. Up until now we are only considering in sample \it{goodness of fit} measures. That means that there is a chance that we have overfitted our model to our observed data. In order to check that we could compute all the above quantinties on a held-out set, or even perform a k-fold cross validation. This is left for further development of the model.
 
 Results:
+
+\includegraphics[scale=0.440]{./images/2_table6.png}
 
 \item
-Explanation:
+Explanation: Finally, using our original model from part (b), we will predict the prices for the three next years
+
+
 
 Results:
 
-\item
-Explanation:
+\includegraphics[scale=0.440]{./images/2_Figure3_final.png}
 
-Results:
 
 \end{enumerate}
 \end{document}
