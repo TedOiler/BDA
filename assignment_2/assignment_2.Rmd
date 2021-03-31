@@ -1,0 +1,98 @@
+---
+title: "Assignment2"
+author: "Ted Ladas - s2124289"
+date: "30/03/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+rm(list=ls())
+knitr::opts_chunk$set(echo = TRUE)
+
+theme_set(theme_minimal())
+
+library(rjags)
+library(INLA)
+library(dplyr)
+library(data.table)
+library(ggplot2)
+library(ggcorrplot)
+library(gridExtra)
+```
+
+```{r 1.a(i)}
+load(file='./earthScot.RData')
+earthQ <- data.table(earthQ)
+
+# EDA
+numcols <- sapply(earthQ, is.numeric) 
+
+# cor.earthQ <- earthQ[, ..numcols] %>% 
+#  cor(use="pairwise.complete")
+
+cor.earthQ <- cor(earthQ, use="pairwise.complete")
+
+
+ggcorrplot(cor.earthQ, hc.order=TRUE, type="lower",
+   lab = TRUE)
+
+earthQ %>% 
+  filter(!is.na(`nrUK>4.5`)) %>%
+  ggplot(aes(dist, eartScot, size=MLrUK, color=`nrUK>4.5`)) +
+  geom_point() +
+  geom_smooth(method = "lm", se=FALSE)
+
+earthQ %>% 
+  filter(!is.na(`nrUK>4.5`)) %>%
+  ggplot(aes(decade, eartScot, size=MLrUK, color=`nrUK>4.5`)) +
+  geom_point() +
+  geom_smooth(method = "lm", se=FALSE)
+
+earthQ %>% 
+  filter(!is.na(`nrUK>4.5`)) %>%
+  ggplot(aes(eartrUK, eartScot, size=MLrUK, color=`nrUK>4.5`)) +
+  geom_point() +
+  geom_smooth(method = "lm", se=FALSE)
+
+```
+
+```{r 1.a(ii)}
+```
+
+
+```{r 1.b}
+```
+
+
+```{r 1.c}
+```
+
+
+```{r 1.d}
+```
+
+
+```{r 1.e}
+```
+
+```{r 2.a}
+```
+
+
+```{r 2.b}
+```
+
+
+```{r 2.c}
+```
+
+
+```{r 2.d}
+```
+
+
+```{r 2.e}
+```
+
+
+
