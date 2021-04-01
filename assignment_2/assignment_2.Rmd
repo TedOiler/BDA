@@ -108,41 +108,79 @@ earthQ %>%
 
 ```
 
-
-```{r 1.b}
-
-model.b1 <- "model{
+```{r 1.b(model)}
+model.s <- "model{
   # Hyperparameters
-  a.0 <- 0.01         
-  b.0 <- 0.01
+  a.0 <- a        
+  b.0 <- b
 
   # prior
   lambda ~ dgamma(a.0,b.0)
 
  #Likelihood
   for(i in 1:n) {
-      log(mu[i])  <- lambda*eartrUK[i]
+      mu[i]  <- lambda*eartrUK[i]
       eartScot[i] ~ dpois(mu[i])
     } 
   }"
 
 n <- length(earthQ$eartrUK)
-b1.inits <- list(lambda=1)
+inits <- list(list(lambda=10^0),
+              list(lambda=10^1),
+              list(lambda=10^2),
+              list(lambda=10^3),
+              list(lambda=10^4))
+```
+
+
+```{r 1.b(i)}
 b1.data <- list(n=n,
                eartScot=earthQ$eartScot,
-               eartrUK =earthQ$eartrUK)
+               eartrUK =earthQ$eartrUK,
+               a=0.01,
+               b=0.01)
 
-fit.b1 <- jags.model(file=textConnection(model.b1),
-                     data=b1.data)
-
+fit.b1 <- jags.model(file=textConnection(model.s),
+                     data=b1.data, 
+                     inits=inits,
+                     n.chains=5)
 update(fit.b1, n.iter=5000)
-
-# Longer run for making inferences, assuming chains have converged
 results.b1 <- coda.samples(fit.b1,
-                           variable.names=c("lambda"),n.iter=10000)
+                           variable.names=c("lambda"),
+                           n.iter=1e6)
 
+# convergence and summary statistics for b1
+plot(results.b1)
 summary(results.b1)
+gelman.diag(results.b1)
+gelman.plot(results.b1)
+round(effectiveSize(results.b1),2)
+acf(results.b1[[1]][,"lambda"])
+```
+```{r 1.b(ii)}
+b2.data <- list(n=n,
+               eartScot=earthQ$eartScot,
+               eartrUK =earthQ$eartrUK,
+               a=16,
+               b=20)
 
+fit.b2 <- jags.model(file=textConnection(model.s),
+                     data=b2.data,
+                     inits=inits,
+                     n.chains=5)
+update(fit.b2, n.iter=5000)
+results.b2 <- coda.samples(fit.b2,
+                           variable.names=c("lambda"),
+                           n.iter=1e6)
+
+
+# convergence and summary statistics for b2
+plot(results.b2)
+summary(results.b2)
+gelman.diag(results.b2)
+gelman.plot(results.b2)
+round(effectiveSize(results.b2),2)
+acf(results.b2[[1]][,"lambda"])
 ```
 
 
