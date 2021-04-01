@@ -29,8 +29,10 @@ ggcorrplot(cor.earthQ,
            type="lower",
            lab=TRUE)
 
-earthQ %>% 
-  filter(!is.na(`nrUK>4.5`)) %>%
+plot <- earthQ %>% 
+  filter(!is.na(`nrUK>4.5`))
+
+plot %>%
   ggplot(aes(dist, eartScot,
              size=MLrUK,
              color=`nrUK>4.5`)) +
@@ -39,8 +41,7 @@ earthQ %>%
               formula='y~x',
               se=FALSE)
 
-earthQ %>% 
-  filter(!is.na(`nrUK>4.5`)) %>%
+plot %>%
   ggplot(aes(decade, eartScot,
              size=MLrUK,
              color=`nrUK>4.5`)) +
@@ -49,8 +50,7 @@ earthQ %>%
               formula='y~x',
               se=FALSE)
 
-earthQ %>% 
-  filter(!is.na(`nrUK>4.5`)) %>%
+plot %>%
   ggplot(., aes(eartrUK, eartScot,
                 size=MLrUK,
                 color=`nrUK>4.5`)) +
@@ -108,7 +108,7 @@ earthQ %>%
 
 ```
 
-```{r 1.b(model)}
+```{r 1.b(model.s)}
 model.s <- "model{
   # Hyperparameters
   a.0 <- a        
@@ -157,6 +157,8 @@ gelman.plot(results.b1)
 round(effectiveSize(results.b1),2)
 acf(results.b1[[1]][,"lambda"])
 ```
+
+
 ```{r 1.b(ii)}
 b2.data <- list(n=n,
                eartScot=earthQ$eartScot,
@@ -181,6 +183,63 @@ gelman.diag(results.b2)
 gelman.plot(results.b2)
 round(effectiveSize(results.b2),2)
 acf(results.b2[[1]][,"lambda"])
+```
+
+
+```{r 1.b(model.h)}
+model.h <- "model{
+ # Deterministic
+  sigma2 = 1/tau
+
+ # Hyperpriors
+  a.0 ~ dlnorm(log(a), tau)
+  b.0 ~ dlnorm(log(b), tau)
+  
+ # Prior
+  lambda ~ dgamma(a.0,b.0)
+
+ # Likelihood
+  for(i in 1:n) {
+      mu[i]  <- lambda*eartrUK[i]
+      eartScot[i] ~ dpois(mu[i])
+    } 
+  }"
+
+n <- length(earthQ$eartrUK)
+inits <- list(list(lambda=10^0),
+              list(lambda=10^1),
+              list(lambda=10^2),
+              list(lambda=10^3),
+              list(lambda=10^4))
+```
+
+```{r 1.b(iii)}
+b3.data <- list(n=n,
+               eartScot=earthQ$eartScot,
+               eartrUK =earthQ$eartrUK,
+               a=2,
+               b=4,
+               tau=log(1.64))
+
+fit.b3 <- jags.model(file=textConnection(model.h),
+                     data=b3.data, 
+                     inits=inits,
+                     n.chains=5)
+update(fit.b3, n.iter=5000)
+results.b3 <- coda.samples(fit.b3,
+                           variable.names=c("lambda", "a.0", "b.0"),
+                           n.iter=1e6,
+                           thin=150)
+
+# convergence and summary statistics for b1
+plot(results.b3)
+summary(results.b3)
+gelman.diag(results.b3)
+gelman.plot(results.b3)
+round(effectiveSize(results.b3),2)
+acf(results.b3[[1]][,"lambda"])
+acf(results.b3[[1]][,"a.0"])
+acf(results.b3[[1]][,"b.0"])
 ```
 
 
