@@ -8,9 +8,6 @@ output: html_document
 ```{r setup, include=FALSE}
 rm(list=ls())
 knitr::opts_chunk$set(echo = TRUE)
-
-theme_set(theme_minimal())
-
 library(rjags)
 library(INLA)
 library(dplyr)
@@ -75,7 +72,7 @@ earthQ %>%
   geom_smooth(method="glm",
               formula='y~x',
               method.args=list(family=poisson(link="log")),
-              se=FALSE,
+              se=T,
               aes(color="red4"), linetype="dashed") +
   labs(title = "Poisson Regression",
        subtitle = NULL,
@@ -88,23 +85,30 @@ earthQ %>%
 
 # coefficients of regression after unlinking
 a1.coef.unlinked <- a1 %>% coef() %>% exp()
-a1.coef.unlinked
-
 # earthquakes during 70s and 80s
-a1.fit.unlinked <- a1 %>% predict(., type="response") %>% exp() %>% signif(.,0)
+a1.fited <- a1 %>% predict(., type="response") %>% signif(.,0)
 earthquakes.70.80 <- NULL
-earthquakes.70.80 <- cbind(c(1970,1980),a1.fit.unlinked[7:8])
+earthquakes.70.80 <- cbind(c(1970,1980),a1.fited[7:8])
+
+a1.coef.unlinked
 earthquakes.70.80
 
-earthQ %>% 
-  ggplot(., aes(decade, eartScot)) +
-  geom_point(size=3) + 
-  geom_abline(intercept=a1.coef.unlinked[1],
-              slope=a1.coef.unlinked[2],
-              color="red",
-              linetype="dashed",
-              size=1.5)
+# Something is wrong here because all errors are positive...
+plot.df <- earthQ %>%
+  mutate(eartScot.pred.a1 = a1 %>% predict(., type="response")) %>%
+  dplyr::select(eartScot.pred.a1, eartrUK, decade) %>%
+  mutate(eartScot=eartScot.pred.a1) %>% 
+  dplyr::select (eartScot, eartrUK, decade)
 
+earthQ %>%
+  dplyr::select(eartScot,eartrUK, decade) %>%
+  bind_rows(.,plot.df) %>%
+  mutate(ud=factor(c(rep("actual",12), rep("a1.prediction",12)))) %>%
+  ggplot(., aes(decade, eartScot, color=ud)) +
+  geom_point(size=2) +
+  labs(title="GLM fit",
+       color=NULL) +
+  geom_line()
 ```
 
 
