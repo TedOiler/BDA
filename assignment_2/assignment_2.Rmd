@@ -70,14 +70,21 @@ a1 <- glm(eartScot~eartrUK, data=earthQ, family=poisson(link = "log"))
 summary(a1)
 
 earthQ %>% 
-  filter(!is.na(`nrUK>4.5`)) %>%
   ggplot(., aes(eartrUK, eartScot)) +
   geom_point(size=3) +
   geom_smooth(method="glm",
               formula='y~x',
               method.args=list(family=poisson(link="log")),
               se=FALSE,
-              aes(color="red4"))
+              aes(color="red4"), linetype="dashed") +
+  labs(title = "Poisson Regression",
+       subtitle = NULL,
+       caption = NULL,
+       tag = NULL,
+       #x = NULL,
+       #y = NULL,
+       colour = "Regression") +
+  theme_minimal()
 
 # coefficients of regression after unlinking
 a1.coef.unlinked <- a1 %>% coef() %>% exp()
@@ -88,6 +95,16 @@ a1.fit.unlinked <- a1 %>% predict(., type="response") %>% exp() %>% signif(.,0)
 earthquakes.70.80 <- NULL
 earthquakes.70.80 <- cbind(c(1970,1980),a1.fit.unlinked[7:8])
 earthquakes.70.80
+
+earthQ %>% 
+  ggplot(., aes(decade, eartScot)) +
+  geom_point(size=3) + 
+  geom_abline(intercept=a1.coef.unlinked[1],
+              slope=a1.coef.unlinked[2],
+              color="red",
+              linetype="dashed",
+              size=1.5)
+
 ```
 
 
