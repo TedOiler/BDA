@@ -86,33 +86,33 @@ earthQ %>%
 # coefficients of regression after unlinking
 a1.coef.unlinked <- a1 %>% coef() %>% exp()
 # earthquakes during 70s and 80s
-a1.fited <- a1 %>% predict(., type="response") %>% signif(.,0)
+a1.fited <- a1 %>% predict(., type="response")
 earthquakes.70.80 <- NULL
 earthquakes.70.80 <- cbind(c(1970,1980),a1.fited[7:8])
 
 a1.coef.unlinked
 earthquakes.70.80
 
-# Something is wrong here because all errors are positive...
-plot.df <- earthQ %>%
-  mutate(eartScot.pred.a1 = a1 %>% predict(., type="response")) %>%
-  dplyr::select(eartScot.pred.a1, eartrUK, decade) %>%
-  mutate(eartScot=eartScot.pred.a1) %>% 
-  dplyr::select (eartScot, eartrUK, decade)
 
 earthQ %>%
   dplyr::select(eartScot,eartrUK, decade) %>%
-  bind_rows(.,plot.df) %>%
-  mutate(ud=factor(c(rep("actual",12), rep("a1.prediction",12)))) %>%
-  ggplot(., aes(decade, eartScot, color=ud)) +
-  geom_point(size=2) +
-  labs(title="GLM fit",
+  mutate(eartScot.pred.a1 = a1.fited) %>%
+  ggplot() +
+  geom_point(aes(x=decade, y=eartScot, color='Actual')) +
+  geom_line(aes(x=decade, y=eartScot, color='Actual')) +
+  geom_point(aes(x=decade, y=eartScot.pred.a1, color='a1 Prediction')) +
+  geom_line(aes(x=decade, y=eartScot.pred.a1, color='a1 Prediction')) +
+  labs(title="GLM fit predictions",
        color=NULL) +
-  geom_line()
+  theme_minimal()
+
 ```
 
 
 ```{r 1.b}
+
+
+
 ```
 
 
