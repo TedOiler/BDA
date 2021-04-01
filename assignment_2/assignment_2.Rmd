@@ -111,7 +111,37 @@ earthQ %>%
 
 ```{r 1.b}
 
+model.b1 <- "model{
+  # Hyperparameters
+  a.0 <- 0.01         
+  b.0 <- 0.01
 
+  # prior
+  lambda ~ dgamma(a.0,b.0)
+
+ #Likelihood
+  for(i in 1:n) {
+      log(mu[i])  <- lambda*eartrUK[i]
+      eartScot[i] ~ dpois(mu[i])
+    } 
+  }"
+
+n <- length(earthQ$eartrUK)
+b1.inits <- list(lambda=1)
+b1.data <- list(n=n,
+               eartScot=earthQ$eartScot,
+               eartrUK =earthQ$eartrUK)
+
+fit.b1 <- jags.model(file=textConnection(model.b1),
+                     data=b1.data)
+
+update(fit.b1, n.iter=5000)
+
+# Longer run for making inferences, assuming chains have converged
+results.b1 <- coda.samples(fit.b1,
+                           variable.names=c("lambda"),n.iter=10000)
+
+summary(results.b1)
 
 ```
 
