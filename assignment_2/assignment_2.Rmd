@@ -132,7 +132,6 @@ inits <- list(list(lambda=10^0),
               list(lambda=10^4))
 ```
 
-
 ```{r 1.b(i)}
 b1.data <- list(n=n,
                eartScot=earthQ$eartScot,
@@ -157,7 +156,6 @@ gelman.plot(results.b1)
 round(effectiveSize(results.b1),2)
 acf(results.b1[[1]][,"lambda"])
 ```
-
 
 ```{r 1.b(ii)}
 b2.data <- list(n=n,
@@ -184,7 +182,6 @@ gelman.plot(results.b2)
 round(effectiveSize(results.b2),2)
 acf(results.b2[[1]][,"lambda"])
 ```
-
 
 ```{r 1.b(model.h)}
 model.h <- "model{
@@ -229,9 +226,9 @@ update(fit.b3, n.iter=6000)
 results.b3 <- coda.samples(fit.b3,
                            variable.names=c("lambda", "a.0", "b.0"),
                            n.iter=1e5,
-                           thin=15)
+                           thin=50)
 
-# convergence and summary statistics for b1
+# convergence and summary statistics for b3
 plot(results.b3)
 summary(results.b3)
 gelman.diag(results.b3)
@@ -242,16 +239,50 @@ acf(results.b3[[1]][,"a.0"])
 acf(results.b3[[1]][,"b.0"])
 ```
 
+```{r 1.c(model.c1)}
+model.c1 <- "model{
+ # prior
+  beta0 ~ dnorm(0,1/5)
+  beta1 ~ dnorm(0,1/5)
 
-```{r 1.c}
+ # Likelihood
+  for(i in 1:n) {
+      log(mu[i]) <- beta0+beta1*(dist[i]-mean(dist[]))
+      eartScot[i] ~ dpois(mu[i])
+    } 
+  }"
 
+n <- length(earthQ$eartrUK)
 ```
 
+```{r 1.c}
+c1.data <- list(n=n,
+               eartScot=earthQ$eartScot,
+               dist =earthQ$dist)
+
+fit.c1 <- jags.model(file=textConnection(model.c1),
+                     data=c1.data, 
+                     inits=inits,
+                     n.chains=5)
+update(fit.c1, n.iter=6000)
+results.c1 <- coda.samples(fit.c1,
+                           variable.names=c("beta0", "beta1"),
+                           n.iter=1e4,
+                           thin=5)
+
+# convergence and summary statistics for c1
+plot(results.c1)
+summary(results.c1)
+gelman.diag(results.c1)
+gelman.plot(results.c1)
+round(effectiveSize(results.c1),2)
+acf(results.c1[[1]][,"beta0"])
+acf(results.c1[[1]][,"beta1"])
+```
 
 ```{r 1.d}
 
 ```
-
 
 ```{r 1.e}
 
@@ -261,25 +292,18 @@ acf(results.b3[[1]][,"b.0"])
 
 ```
 
-
 ```{r 2.b}
 
 ```
-
 
 ```{r 2.c}
 
 ```
 
-
 ```{r 2.d}
 
 ```
 
-
 ```{r 2.e}
 
 ```
-
-
-
