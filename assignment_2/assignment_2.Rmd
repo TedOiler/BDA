@@ -123,8 +123,6 @@ model.s <- "model{
       eartScot[i] ~ dpois(mu[i])
     } 
   }"
-
-n <- length(earthQ$eartrUK)
 inits <- list(list(lambda=10^0),
               list(lambda=10^1),
               list(lambda=10^2),
@@ -133,7 +131,7 @@ inits <- list(list(lambda=10^0),
 ```
 
 ```{r 1.b(i)}
-b1.data <- list(n=n,
+b1.data <- list(n=length(earthQ$eartrUK),
                eartScot=earthQ$eartScot,
                eartrUK =earthQ$eartrUK,
                a=0.01,
@@ -158,7 +156,7 @@ acf(results.b1[[1]][,"lambda"])
 ```
 
 ```{r 1.b(ii)}
-b2.data <- list(n=n,
+b2.data <- list(n=length(earthQ$eartrUK),
                eartScot=earthQ$eartScot,
                eartrUK =earthQ$eartrUK,
                a=16,
@@ -201,8 +199,6 @@ model.h <- "model{
       eartScot[i] ~ dpois(mu[i])
     } 
   }"
-
-n <- length(earthQ$eartrUK)
 inits <- list(list(lambda=10^0),
               list(lambda=10^1),
               list(lambda=10^2),
@@ -211,7 +207,7 @@ inits <- list(list(lambda=10^0),
 ```
 
 ```{r 1.b(iii)}
-b3.data <- list(n=n,
+b3.data <- list(n=length(earthQ$eartrUK),
                eartScot=earthQ$eartScot,
                eartrUK =earthQ$eartrUK,
                a=2,
@@ -251,12 +247,10 @@ model.c1 <- "model{
       eartScot[i] ~ dpois(mu[i])
     } 
   }"
-
-n <- length(earthQ$eartrUK)
 ```
 
 ```{r 1.c}
-c1.data <- list(n=n,
+c1.data <- list(n=length(earthQ$eartrUK),
                eartScot=earthQ$eartScot,
                dist =earthQ$dist)
 
@@ -280,9 +274,68 @@ acf(results.c1[[1]][,"beta0"])
 acf(results.c1[[1]][,"beta1"])
 ```
 
-```{r 1.d}
+```{r 1.d(model.d1)}
+model.d1 <- "model{
+ # hyperprior
+  sigma2.delta ~ dunif(0,5) 
+
+ # Deterministic 
+  tau.delta <- pow(sigma2.delta, -2)
+ 
+ # prior
+  beta0 ~ dnorm(0,1/5)
+  beta1 ~ dnorm(0,1/5)
+  
+ # Likelihood
+  for(i in 1:n) {
+      delta[i] ~ dnorm(0,tau.delta)
+      log(mu[i]) <- beta0+beta1*(dist[i]-mean(dist[])) + delta[i]
+      eartScot[i] ~ dpois(mu[i])
+    } 
+  }"
+
+model.d1 <- "model{
+ # prior
+  beta0 ~ dnorm(0,1/5)
+  beta1 ~ dnorm(0,1/5)
+  tau.delta ~ dunif(0,5)
+ # Likelihood
+  for(i in 1:n) {
+      delta[i] ~ dnorm(0,tau.delta)
+      log(mu[i]) <- beta0+beta1*(dist[i]-mean(dist[])) + delta[i]
+      eartScot[i] ~ dpois(mu[i])
+    } 
+  }"
 
 ```
+
+```{r 1.d}
+d1.data <- list(n=length(earthQ$eartrUK),
+               eartScot=earthQ$eartScot,
+               dist=earthQ$dist)
+
+fit.d1 <- jags.model(file=textConnection(model.d1),
+                     data=d1.data, 
+                     inits=inits,
+                     n.chains=5)
+update(fit.d1, n.iter=6000)
+results.d1 <- coda.samples(fit.d1,
+                           variable.names=c("beta0", "beta1", "tau.delta"),
+                           n.iter=1e4,
+                           thin=5)
+
+# convergence and summary statistics for c1
+plot(results.d1)
+summary(results.d1)
+gelman.diag(results.d1)
+gelman.plot(results.d1)
+round(effectiveSize(results.d1),2)
+acf(results.d1[[1]][,"beta0"])
+acf(results.d1[[1]][,"beta1"])
+acf(results.d1[[1]][,"tau.delta"])
+```
+
+
 
 ```{r 1.e}
 
