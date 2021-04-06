@@ -275,36 +275,55 @@ acf(results.c1[[1]][,"beta1"])
 ```
 
 ```{r 1.d(model.d1)}
-model.d1 <- "model{
- # hyperprior
-  sigma2.delta ~ dunif(0,5) 
 
- # Deterministic 
-  tau.delta <- pow(sigma2.delta, -2)
- 
- # prior
-  beta0 ~ dnorm(0,1/5)
-  beta1 ~ dnorm(0,1/5)
-  
+# model.d1 <- "model{
+#  # hyperprior
+#   sigma2.delta ~ dunif(0,5) 
+# 
+#  # Deterministic 
+#   tau.delta <- pow(sigma2.delta, -2)
+#  
+#  # prior
+#   beta0 ~ dnorm(0,1/5)
+#   beta1 ~ dnorm(0,1/5)
+#   
+#  # Likelihood
+#   for(i in 1:n) {
+#       delta[i] ~ dnorm(0,tau.delta)
+#       log(mu[i]) <- beta0+beta1*(dist[i]-mean(dist[])) + delta[i]
+#       eartScot[i] ~ dpois(mu[i])
+#     } 
+#   }"
+# 
+# salmonB.model <- "model{
+# for(j in 1:J) {
+#   y[j] ~ dbin(p[j],n[j])
+#   logit(p[j]) <- nu[j]
+#   nu[j] ~ dnorm(mu.nu,tau.nu)
+# }
+# 
+# # Priors
+# mu.nu ~ dnorm(0, tau.mu.nu)
+# tau.nu <- pow(sigma.nu, -2)
+# sigma.nu ~ dunif(0, UB.sigma.nu)
+# 
+# # Tracing the expected probabilities
+# E.surv <- ilogit(mu.nu)
+# } "
+
+model.d1 <- "model{
  # Likelihood
   for(i in 1:n) {
       delta[i] ~ dnorm(0,tau.delta)
       log(mu[i]) <- beta0+beta1*(dist[i]-mean(dist[])) + delta[i]
       eartScot[i] ~ dpois(mu[i])
-    } 
-  }"
-
-model.d1 <- "model{
+  } 
+    
  # prior
   beta0 ~ dnorm(0,1/5)
   beta1 ~ dnorm(0,1/5)
-  tau.delta ~ dunif(0,5)
- # Likelihood
-  for(i in 1:n) {
-      delta[i] ~ dnorm(0,tau.delta)
-      log(mu[i]) <- beta0+beta1*(dist[i]-mean(dist[])) + delta[i]
-      eartScot[i] ~ dpois(mu[i])
-    } 
+  tau.delta <- pow(sigma.delta, -2)
+  sigma.delta ~ dunif(0,5)
   }"
 
 ```
@@ -320,9 +339,9 @@ fit.d1 <- jags.model(file=textConnection(model.d1),
                      n.chains=5)
 update(fit.d1, n.iter=6000)
 results.d1 <- coda.samples(fit.d1,
-                           variable.names=c("beta0", "beta1", "tau.delta"),
-                           n.iter=1e4,
-                           thin=5)
+                           variable.names=c("beta0", "beta1", "sigma.delta"),
+                           n.iter=1e5,
+                           thin=100)
 
 # convergence and summary statistics for c1
 plot(results.d1)
@@ -332,7 +351,7 @@ gelman.plot(results.d1)
 round(effectiveSize(results.d1),2)
 acf(results.d1[[1]][,"beta0"])
 acf(results.d1[[1]][,"beta1"])
-acf(results.d1[[1]][,"tau.delta"])
+acf(results.d1[[1]][,"sigma.delta"])
 ```
 
 
