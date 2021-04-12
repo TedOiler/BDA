@@ -335,16 +335,20 @@ model.e1 <- "model{
 
 
 ```{r 1.e imputation}
-
-
+imputation <- glm(`nrUK>4.5`~ MLrUK, data=earthQ, family=poisson(link = "log"))
+earthQ.imp <- earthQ %>% 
+  mutate(`nrUK>4.5` = ifelse(is.na(`nrUK>4.5`),
+                             round(predict(imputation, type="response"),0),
+                              `nrUK>4.5`))
+earthQ.imp
 
 ```
 
 
 ```{r 1.e}
-e1.data <- list(n=length(earthQ$eartrUK),
-               eartScot=earthQ$eartScot,
-               nrUK =earthQ$`nrUK>4.5`)
+e1.data <- list(n=length(earthQ.imp$eartrUK),
+               eartScot=earthQ.imp$eartScot,
+               nrUK =earthQ.imp$`nrUK>4.5`)
 
 fit.e1 <- jags.model(file=textConnection(model.e1),
                      data=e1.data, 
@@ -364,6 +368,58 @@ gelman.plot(results.e1)
 round(effectiveSize(results.e1),2)
 acf(results.e1[[1]][,"beta0"])
 acf(results.e1[[1]][,"beta1"])
+```
+
+```{r 1.e(model.e2)}
+model.e2 <- "model{
+ # prior
+  beta0 ~ dnorm(0,1/5)
+  beta1 ~ dnorm(0,1/5)
+  
+ # Likelihood
+  for(i in 1:n) {
+      nrUK[i]  ~ dgamma(a.nrUK, b.nrUK)
+      log(mu[i]) <- beta0+beta1*(nrUK[i]-mean(nrUK[]))
+      eartScot[i] ~ dpois(mu[i])
+    } 
+  }"
+```
+
+```{r test}
+# x <- seq(0, 5, length.out=1000)
+# cv = 0.4
+# cv^(-2)
+# 
+# dat <- data.frame(x=x, px=dgamma(x, shape = cv^(-2), rate = cv^(-2)-1))
+# ggplot(dat, aes(x=x, y=px)) + geom_line()
+```
+
+
+```{r}
+e2.data <- list(n=length(earthQ.imp$eartrUK),
+               eartScot=earthQ.imp$eartScot,
+               nrUK =earthQ.imp$`nrUK>4.5`,
+               a.nrUK=6.25,
+               b.nrUK=5.25) # a and b chosen for mean 1 and CV 0.4
+
+fit.e2 <- jags.model(file=textConnection(model.e2),
+                     data=e2.data, 
+                     inits=inits,
+                     n.chains=5)
+update(fit.e2, n.iter=6000)
+results.e2 <- coda.samples(fit.e2,
+                           variable.names=c("beta0", "beta1"),
+                           n.iter=1e4,
+                           thin=5)
+
+# convergence and summary statistics for e1
+plot(results.e2)
+summary(results.e2)
+gelman.diag(results.e2)
+gelman.plot(results.e2)
+round(effectiveSize(results.e2),2)
+acf(results.e2[[1]][,"beta0"])
+acf(results.e2[[1]][,"beta1"])
 ```
 
 
