@@ -395,7 +395,7 @@ model.e2 <- "model{
 ```
 
 
-```{r}
+```{r 1.e2}
 e2.data <- list(n=length(earthQ.imp$eartrUK),
                eartScot=earthQ.imp$eartScot,
                nrUK =earthQ.imp$`nrUK>4.5`,
@@ -413,6 +413,7 @@ results.e2 <- coda.samples(fit.e2,
                            thin=5)
 
 # convergence and summary statistics for e1
+diagMCMC(results.e2)
 plot(results.e2)
 summary(results.e2)
 gelman.diag(results.e2)
@@ -422,6 +423,43 @@ acf(results.e2[[1]][,"beta0"])
 acf(results.e2[[1]][,"beta1"])
 ```
 
+
+```{r 1.e posterior predictive}
+e2.params <- results.e2 %>% as.matrix(.) %>% as.data.frame(.) %>% exp(.)
+e2.estimates <- colMeans(e2.params)
+
+e2.params %>%
+  ggplot() +
+  geom_density(aes(beta0), fill="red", colour="red", alpha=0.6) +
+  geom_density(aes(beta1), fill="blue", colour="blue", alpha=0.6) +
+  theme(axis.title.x = element_blank()) + 
+  ggtitle(expression(paste("Posterior Densities of ", beta_0," and ", beta_1)))
+
+# round(e2.estimates[1] + e2.estimates[2]*earthQ.imp$`nrUK>4.5`,0) # Earthquakes according to model e2
+set.seed(2)
+mu.post.e2 <- e2.estimates[1] + e2.estimates[2]*earthQ.imp$`nrUK>4.5`
+ynew.e2 <- as.data.frame(rpois(12, mu.post.e2))
+ynew.e2
+
+y.e2 %>% mutate(ynew.e2=ynew.e2+rep(1,12))
+
+y.e2
+
+
+earthQ %>%
+  ggplot() +
+  geom_point(aes(x=decade, y=eartScot)) +
+  geom_line(aes(x=decade, y=eartScot)) +
+  geom_point(aes(x= ,y=)) +
+  geom_line(aes(x= ,y=)) # +
+  # geom_point(aes(x= ,y=)) +
+  # geom_line(aes(x= ,y=))
+
+plot(y,
+     main = "Posterior Predictive Distribution",
+     xlab = "y")
+plot
+```
 
 
 ```{r 2.a}
