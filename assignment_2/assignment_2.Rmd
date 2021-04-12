@@ -37,7 +37,7 @@ plot %>%
              size=MLrUK,
              color=`nrUK>4.5`)) +
   geom_point() +
-  geom_smooth(method="lm",
+  geom_smooth(method="glm",
               formula='y~x',
               se=FALSE)
 
@@ -46,7 +46,7 @@ plot %>%
              size=MLrUK,
              color=`nrUK>4.5`)) +
   geom_point() +
-  geom_smooth(method="lm",
+  geom_smooth(method="glm",
               formula='y~x',
               se=FALSE)
 
@@ -55,7 +55,7 @@ plot %>%
                 size=MLrUK,
                 color=`nrUK>4.5`)) +
   geom_point() +
-  geom_smooth(method="lm",
+  geom_smooth(method="glm",
               formula='y~x',
               se=FALSE)
 
@@ -275,42 +275,6 @@ acf(results.c1[[1]][,"beta1"])
 ```
 
 ```{r 1.d(model.d1)}
-
-# model.d1 <- "model{
-#  # hyperprior
-#   sigma2.delta ~ dunif(0,5) 
-# 
-#  # Deterministic 
-#   tau.delta <- pow(sigma2.delta, -2)
-#  
-#  # prior
-#   beta0 ~ dnorm(0,1/5)
-#   beta1 ~ dnorm(0,1/5)
-#   
-#  # Likelihood
-#   for(i in 1:n) {
-#       delta[i] ~ dnorm(0,tau.delta)
-#       log(mu[i]) <- beta0+beta1*(dist[i]-mean(dist[])) + delta[i]
-#       eartScot[i] ~ dpois(mu[i])
-#     } 
-#   }"
-# 
-# salmonB.model <- "model{
-# for(j in 1:J) {
-#   y[j] ~ dbin(p[j],n[j])
-#   logit(p[j]) <- nu[j]
-#   nu[j] ~ dnorm(mu.nu,tau.nu)
-# }
-# 
-# # Priors
-# mu.nu ~ dnorm(0, tau.mu.nu)
-# tau.nu <- pow(sigma.nu, -2)
-# sigma.nu ~ dunif(0, UB.sigma.nu)
-# 
-# # Tracing the expected probabilities
-# E.surv <- ilogit(mu.nu)
-# } "
-
 model.d1 <- "model{
  # Likelihood
   for(i in 1:n) {
@@ -325,7 +289,6 @@ model.d1 <- "model{
   tau.delta <- pow(sigma.delta, -2)
   sigma.delta ~ dunif(0,5)
   }"
-
 ```
 
 ```{r 1.d}
@@ -356,9 +319,54 @@ acf(results.d1[[1]][,"sigma.delta"])
 
 
 
-```{r 1.e}
+```{r 1.e(model.e1)}
+model.e1 <- "model{
+ # prior
+  beta0 ~ dnorm(0,1/5)
+  beta1 ~ dnorm(0,1/5)
+
+ # Likelihood
+  for(i in 1:n) {
+      log(mu[i]) <- beta0+beta1*(nrUK[i]-mean(nrUK[]))
+      eartScot[i] ~ dpois(mu[i])
+    } 
+  }"
+```
+
+
+```{r 1.e imputation}
+
+
 
 ```
+
+
+```{r 1.e}
+e1.data <- list(n=length(earthQ$eartrUK),
+               eartScot=earthQ$eartScot,
+               nrUK =earthQ$`nrUK>4.5`)
+
+fit.e1 <- jags.model(file=textConnection(model.e1),
+                     data=e1.data, 
+                     inits=inits,
+                     n.chains=5)
+update(fit.e1, n.iter=6000)
+results.e1 <- coda.samples(fit.e1,
+                           variable.names=c("beta0", "beta1"),
+                           n.iter=1e4,
+                           thin=5)
+
+# convergence and summary statistics for e1
+plot(results.e1)
+summary(results.e1)
+gelman.diag(results.e1)
+gelman.plot(results.e1)
+round(effectiveSize(results.e1),2)
+acf(results.e1[[1]][,"beta0"])
+acf(results.e1[[1]][,"beta1"])
+```
+
+
 
 ```{r 2.a}
 
