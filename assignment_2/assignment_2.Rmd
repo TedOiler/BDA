@@ -13,6 +13,7 @@ library(INLA)
 library(dplyr)
 library(data.table)
 library(ggplot2)
+library("ggpubr")
 library(ggcorrplot)
 library(gridExtra)
 ```
@@ -413,7 +414,7 @@ results.e2 <- coda.samples(fit.e2,
                            thin=5)
 
 # convergence and summary statistics for e1
-diagMCMC(results.e2)
+#diagMCMC(results.e2)
 plot(results.e2)
 summary(results.e2)
 gelman.diag(results.e2)
@@ -428,45 +429,108 @@ acf(results.e2[[1]][,"beta1"])
 e2.params <- results.e2 %>% as.matrix(.) %>% as.data.frame(.) %>% exp(.)
 e2.estimates <- colMeans(e2.params)
 
+beta.prior <- rnorm(dim(e2.params)[1], mean=0, sd=sqrt(5))
 e2.params %>%
+  mutate(beta.prior = beta.prior) %>%
   ggplot() +
-  geom_density(aes(beta0), fill="red", colour="red", alpha=0.6) +
-  geom_density(aes(beta1), fill="blue", colour="blue", alpha=0.6) +
+  geom_density(aes(beta0), fill="red4", colour="red4", alpha=0.6) +
+  geom_density(aes(beta1), fill="blue4", colour="blue4", alpha=0.6) +
+  geom_density(aes(beta.prior), fill="green4", colour="green4", alpha=0.6) +
   theme(axis.title.x = element_blank()) + 
-  ggtitle(expression(paste("Posterior Densities of ", beta_0," and ", beta_1)))
+  ggtitle(expression(paste("Posterior Densities of ", beta_0," and ", beta_1))) +
+  #geom_text(aes(label=c("1","2","3")))
 
 # round(e2.estimates[1] + e2.estimates[2]*earthQ.imp$`nrUK>4.5`,0) # Earthquakes according to model e2
 set.seed(2)
 mu.post.e2 <- e2.estimates[1] + e2.estimates[2]*earthQ.imp$`nrUK>4.5`
 ynew.e2 <- as.data.frame(rpois(12, mu.post.e2))
-ynew.e2
-
-y.e2 %>% mutate(ynew.e2=ynew.e2+rep(1,12))
-
-y.e2
+# y.e2 %>% mutate(ynew.e2=ynew.e2+rep(1,12))
 
 
 earthQ %>%
   ggplot() +
   geom_point(aes(x=decade, y=eartScot)) +
-  geom_line(aes(x=decade, y=eartScot)) +
-  geom_point(aes(x= ,y=)) +
-  geom_line(aes(x= ,y=)) # +
-  # geom_point(aes(x= ,y=)) +
-  # geom_line(aes(x= ,y=))
-
-plot(y,
-     main = "Posterior Predictive Distribution",
-     xlab = "y")
-plot
+  geom_line(aes(x=decade, y=eartScot))
+# plot(y,
+#      main = "Posterior Predictive Distribution",
+#      xlab = "y")
 ```
 
 
-```{r 2.a}
 
+- `Region` for Bejaia and Sidi Bel-abbes
+- `month` from June to September 2012
+- `TempCels` Daily temperature in Celsius
+- `RH` Daily relative Humidity (%)
+- `Ws` Daily wind speed (Km/h)
+- `RainYest` Yesterday's precipitations (mm/m^2) 
+- `DMC` The Duff Moisture Code is a numeric rating of the average moisture content of loosely compacted organic layers of moderate depth in the forest. It is part of the Canadian Forest Fire Weather Index (FWI).
+- `Fire` Absence/presence (0/1) of a wildfire.
+
+```{r 2.a}
+AlgForest <- read.csv('./AlgForest.csv')
+AlgForest <- data.table(AlgForest)
+
+AlgForest <- AlgForest %>%
+  mutate(Fire = as.factor(Fire))
+
+
+p1 <- AlgForest %>%
+  ggplot(aes(x=TempCels, y=Fire)) +
+  geom_point(aes(color=Region), size=2) +
+  geom_smooth(method=glm,
+              formula='y~x',
+              se=FALSE)
+
+p2 <- AlgForest %>%
+  ggplot(aes(x=DMC, y=Fire)) +
+  geom_point(aes(color=Region), size=2) +
+  geom_smooth(method=glm,
+              formula='y~x',
+              se=FALSE)
+
+p3 <- AlgForest %>%
+  ggplot(aes(x=Ws, y=Fire)) +
+  geom_point(aes(color=Region), size=2) +
+  geom_smooth(formula='y~x',
+              se=FALSE)
+
+p4 <- AlgForest %>%
+  ggplot(aes(x=RainYest, y=Fire)) +
+  geom_point(aes(color=Region), size=2) +
+  geom_smooth(se=FALSE)
+
+ggarrange(p1, p2, p3, p4,
+          #labels = c("A", "B", "C"),
+          ncol = 2, nrow = 2)
+
+
+par(mfrow=c(2,2))
+boxplot(TempCels ~Fire*Region,data=AlgForest, boxfill=c("darkgreen","darkorange2"), xlab="", ylab="", main=("TempCels"))
+boxplot(DMC      ~Fire*Region,data=AlgForest, boxfill=c("darkgreen","darkorange2"), xlab="", ylab="", main=("DMC"))
+boxplot(Ws       ~Fire*Region,data=AlgForest, boxfill=c("darkgreen","darkorange2"), ylab="", main=("Ws"))
+boxplot(RainYest ~Fire*Region,data=AlgForest, boxfill=c("darkgreen","darkorange2"), ylab="", main=("RainYest"), ylim=c(0,5))
+par(mfrow=c(1,1))
 ```
 
 ```{r 2.b}
+
+a2 <- glm(Fire~TempCels + DMC + Ws + RainYest , data=AlgForest, family=binomial(link="logit"))
+# coefficients of regression after unlinking
+a2.coef.unlinked <- a2 %>% coef() %>% exp()
+a2 %>% coef() %>% exp() %>% round(.,3)
+# Interpretation of coefficients
+# odds = 1.08405  => This means that a successful outcome has almost 
+# the same chance if we increase the variabe by one unit.
+
+new.data <- data.frame(
+  TempCels = c(25),
+  DMC = c(40),
+  Ws = c(18),
+  RainYest = c(1.0))
+
+a2.prob <- a2 %>% predict(., type="response", newdata=new.data) 
+prb <- 1-a2.prob
 
 ```
 

@@ -1,0 +1,174 @@
+---
+title: "Untitled"
+author: "Ted Ladas - s2124289"
+date: "12/04/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(mcmcplots)
+```
+
+
+```{r}
+load("salmons.Rdata")
+head(salmons)
+```
+
+
+```{r}
+#### Hierarchical logistic GLM model ####
+
+# Model
+salmonB.model <- "model{
+for(j in 1:J) {
+y[j] ~ dbin(p[j],n[j])
+logit(p[j])  <-  nu[j] 
+nu[j] ~ dnorm(mu.nu,tau.nu)
+}
+
+# Priors
+mu.nu  ~ dnorm(0, tau.mu.nu)
+tau.nu   <- pow(sigma.nu, -2)
+sigma.nu ~ dunif(0, UB.sigma.nu)
+
+# Tracing the expected probabilities
+E.surv <- ilogit(mu.nu)
+} "
+
+# Data and initial values
+salmonB.data <- list(J=10, n=salmons$n, y=salmons$y, 
+                     tau.mu.nu=0.01, UB.sigma.nu=10)
+salmonB.inits <- function(){ list(mu.nu=rnorm(1, 0, 5), 
+                                  sigma.nu=runif(0,5)) }
+# Inference
+salmonB.res.A <- jags.model(file=textConnection(salmonB.model),
+                            data=salmonB.data, inits=salmonB.inits,
+                            n.chains=3, quiet = TRUE)
+update(salmonB.res.A,n.iter=5000)
+salmonB.res.B <- coda.samples(salmonB.res.A,
+                              variable.names=c("mu.nu","sigma.nu","E.surv","p"),
+                              n.iter=50000)
+# Plotting the chains (with a different package)
+# mcmcplots::mcmcplot(salmonB.res.B, 
+#                    parms = c("mu.nu","sigma.nu","E.surv"))
+
+# Summary
+summary(salmonB.res.B)
+
+# DIC
+salmonB.DIC <- dic.samples(model=salmonB.res.A,n.iter=10000,type="pD")
+
+# Plotting the joing posterior for mu.nu and sigma.nu
+# Pooling all chains
+salmonB.output <- do.call(rbind.data.frame,salmonB.res.B)
+# Just work with a random sample from the joint posterior
+x <- sample(1:nrow(salmonB.output),2000)
+
+plot(salmonB.output$mu.nu[x],salmonB.output$sigma.nu[x],
+     xlab=expression(mu[nu]),ylab=expression(sigma[nu]),
+     main=expression(paste("Joint Posterior for ",mu[nu]," and ",sigma[nu])))
+```
+
+```{r}
+#### Posterior and posterior predictive distributions ####
+# Placing the samples in a data.frame
+salB.out <- do.call(rbind.data.frame, salmonB.res.B)
+S <- dim(salB.out)[1]  # Num. MCMC samples
+
+# Posterior distribution for the random effect of an unknown group
+nu11 <- rnorm(n = S, mean = salB.out$mu.nu ,sd = salB.out$sigma.nu)
+p11 <- 1/(1+ exp(-nu11) )  # inverse-logit
+# Plot
+plot(density(p11), main="", xlab = expression(p[11])) 
+
+# Posterior predictive distribution for an unknown group
+z11 <- rbinom(n = S, size = 100, prob = p11)
+# Plot
+auxtable <- table(z11)
+xaux <- as.numeric(names(auxtable))
+plot(NA, xlim=c(min(xaux), max(xaux)), ylim=c(0,max(auxtable)),
+     xlab=expression(z[11]^{(s)}), ylab="freq")
+segments(x0=xaux, y0 = 0, x1=xaux, y1=auxtable)
+
+# Posterior predictive distribution for a known group
+z3 <- rbinom(n = S, size = 100, prob = salB.out$`p[3]`)
+# Plot
+auxtable <- table(z3)
+xaux <- as.numeric(names(auxtable))
+plot(NA, xlim=c(min(xaux), max(xaux)), ylim=c(0,max(auxtable)),
+     xlab=expression(z[3]^{(s)}), ylab="freq")
+segments(x0=xaux, y0 = 0, x1=xaux, y1=auxtable)
+
+```
+
+
+```{r}
+#### Alternate parameterization of the hierarchical logistic GLM model ####
+salmonB2.model <- "model{
+for(j in 1:J) {
+y[j] ~ dbin(p[j],n[j])
+logit(p[j])  <-  mu + epsilon[j] 
+epsilon[j] ~ dnorm(0 ,tau.epsilon)
+}
+
+# Priors
+mu  ~ dnorm(0, tau.mu)
+tau.epsilon   <- pow(sigma.epsilon, -2)
+sigma.epsilon ~ dunif(0, UB.sigma.epsilon)
+
+# Tracing the expected probabilities
+E.surv <- ilogit(mu)
+} "
+```
+
+```{r}
+#### Hierarchical logistic GLM model with covariates ####
+
+# Model
+
+salmonC.model <- "model{
+  for(j in 1:J) {
+    y[j] ~ dbin(p[j],n[j])
+    logit(p[j])  <-  mu + beta1*(X[j] - mean(X[])) + epsilon[j] 
+    epsilon[j] ~ dnorm(0 ,tau.epsilon)
+  }
+
+  # Priors
+  mu  ~ dnorm(0, tau.mu)
+  beta1  ~ dnorm(0, tau.beta1)
+  tau.epsilon   <- pow(sigma.epsilon, -2)
+  sigma.epsilon ~ dunif(0, UB.sigma.epsilon)
+
+  # Tracing the expected probabilities
+  E.surv <- ilogit(mu)
+ } "
+
+# Data and initial values
+salmonC.data <- list(J=10, n=salmons$n, y=salmons$y, 
+                     X=salmons$alength, tau.mu=0.01, 
+                     tau.beta1=0.01, UB.sigma.epsilon=10)
+salmonC.inits <- function(){ list(mu=rnorm(1, 0, 2), 
+                                  beta1=rnorm(1, 0, 2), 
+                                  sigma.epsilon=runif(0,2)) }
+# Inference
+salmonC.res.A <- jags.model(file=textConnection(salmonC.model),
+                            data=salmonC.data, inits=salmonC.inits,
+                            n.chains=3, quiet = TRUE)
+update(salmonC.res.A,n.iter=5000)
+salmonC.res.B <- coda.samples(salmonC.res.A,
+                              variable.names=c("mu","beta1","sigma.epsilon","E.surv","p"),
+                              n.iter=50000)
+# Plotting the chains (with a different package)
+# mcmcplots::mcmcplot(salmonC.res.B, 
+#                    parms = c("mu","beta1","sigma.epsilon","E.surv"))
+
+# Summary
+summary(salmonC.res.B)
+
+# DIC
+salmonC.DIC <- dic.samples(model=salmonC.res.A,n.iter=10000,type="pD")
+```
+
+
