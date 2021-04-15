@@ -531,14 +531,143 @@ new.data <- data.frame(
 
 a2.prob <- a2 %>% predict(., type="response", newdata=new.data) 
 prb <- 1-a2.prob
+```
 
+```{r 2.c(models b)}
+model.c2 <- "model{
+  # prior
+  beta0 ~ dnorm(0,100)
+  beta1 ~ dnorm(0,100)
+  beta2 ~ dnorm(0,100)
+  beta3 ~ dnorm(0,100)
+  beta4 ~ dnorm(0,100)
+
+ #Likelihood
+  for(i in 1:n) {
+      log(mu[i])  <- beta0 + 
+                     beta1*TempCels[i] +
+                     beta2*DMC[i] +
+                     beta3*Ws[i] +
+                     beta4*RainYest[i]
+      eartScot[i] ~ dbern(mu[i])
+    }
+  }"
 ```
 
 ```{r 2.c}
+inits <- list(list(lambda=10^0),
+              list(lambda=10^1),
+              list(lambda=10^2),
+              list(lambda=10^3),
+              list(lambda=10^4))
+
+c2.data <- list(n=length(AlgForest$Fire),
+               TempCels=AlgForest$TempCels,
+               DMC=AlgForest$DMC,
+               Ws=AlgForest$Ws,
+               RainYest=AlgForest$RainYest)
+
+fit.c2 <- jags.model(file=textConnection(model.c2),
+                     data=c2.data,
+                     n.chains=5)
+update(fit.c2, n.iter=7000)
+results.c2 <- coda.samples(fit.c2,
+                           variable.names=c("beta0", "beta1", "beta2", "beta3", "beta4"),
+                           n.iter=1e4)
+
+# convergence and summary statistics for c2
+plot(results.c2)
+summary(results.c2)
+gelman.diag(results.c2)
+gelman.plot(results.c2)
+round(effectiveSize(results.c2),2)
+acf(results.c2[[1]][,"beta0"])
+acf(results.c2[[1]][,"beta1"])
+acf(results.c2[[1]][,"beta2"])
+acf(results.c2[[1]][,"beta3"])
+acf(results.c2[[1]][,"beta4"])
+```
+
+```{r 2.c(results)}
+coefficients.c2 <- colMeans(exp(results.c2[[1]]))
+# coefficients.c2.low <- colMeans(exp(results.c2[[1]]))
+# coefficients.c2.high <- 
+fire <- sum(coefficients.c2*c(1,35,40,18,1))
+result <- ppois(1:100,lambda=fire)
+```
+
+
+
+```{r 2.d(model.d1)}
+model.d1 <- "model{
+  # Likelihood
+  for(i in 1:n) {
+      eartScot[i] ~ dbern(mu[i])
+      log(mu[i])  <- beta0[j.region[i]] + 
+                     beta1*TempCels[i] +
+                     beta2*DMC[i] +
+                     beta3*Ws[i] +
+                     beta4*RainYest[i]
+  }
+  # priors for independent intercepts per county
+  for(j in 1:J){
+    beta0[j] ~ dnorm(0,1/0.1)
+  }
+  # prior
+  beta1 ~ dnorm(0,1/100)
+  beta2 ~ dnorm(0,1/100)
+  beta3 ~ dnorm(0,1/100)
+  beta4 ~ dnorm(0,1/100)
+  }"
+```
+
+```{r 2.d(i)}
+AlgForest.region <- AlgForest %>% 
+  mutate(j.region=if_else(Region=="B",1,2))
+
+d1.data <- list(n=length(AlgForest.region$Fire),
+               TempCels=AlgForest.region$TempCels,
+               DMC=AlgForest.region$DMC,
+               Ws=AlgForest.region$Ws,
+               RainYest=AlgForest.region$RainYest,
+               j.region=AlgForest.region$j.region,
+               J=2)
+
+fit.d1 <- jags.model(file=textConnection(model.d1),
+                     data=d1.data,
+                     n.chains=5)
+update(fit.d1, n.iter=7000)
+results.d1 <- coda.samples(fit.d1,
+                           variable.names=c("beta0", "beta1", "beta2", "beta3", "beta4"),
+                           n.iter=1e4)
+
+# convergence and summary statistics for d1
+plot(results.d1)
+summary(results.d1)
+gelman.diag(results.d1)
+gelman.plot(results.d1)
+round(effectiveSize(results.d1),2)
+acf(results.d1[[1]][,"beta0[1]"])
+acf(results.d1[[1]][,"beta0[2]"])
+acf(results.d1[[1]][,"beta1"])
+acf(results.d1[[1]][,"beta2"])
+acf(results.d1[[1]][,"beta3"])
+acf(results.d1[[1]][,"beta4"])
+```
+
+
+```{r 2.d(ii)}
+
 
 ```
 
-```{r 2.d}
+```{r 2.d(iii)}
+
+
+```
+
+```{r 2.d(iv)}
+
 
 ```
 
