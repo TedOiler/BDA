@@ -656,9 +656,68 @@ acf(results.d1[[1]][,"beta4"])
 ```
 
 
+```{r 2.d(model.d2)}
+model.d2 <- "model{
+  # Likelihood
+  for(i in 1:n) {
+      eartScot[i] ~ dbern(mu[i])
+      log(mu[i])  <- beta0[j.region[i]] + 
+                     beta1*TempCels[i] +
+                     beta2*DMC[i] +
+                     beta3*Ws[i] +
+                     beta4*RainYest[i] +
+                     beta5[month.b[i]]
+  }
+  # priors for independent intercepts per county
+  for(j in 1:J){
+    beta0[j] ~ dnorm(0,1/0.1)
+    beta5[j] ~ dnorm(0,1/0.1)
+  }
+  # prior
+  beta1 ~ dnorm(0,1/100)
+  beta2 ~ dnorm(0,1/100)
+  beta3 ~ dnorm(0,1/100)
+  beta4 ~ dnorm(0,1/100)
+  }"
+```
+
+
 ```{r 2.d(ii)}
+AlgForest.month <- AlgForest.region %>% 
+  mutate(month.b=if_else(month %in% c(7,8), "July&August","June&September"),
+         month.b=as.factor(month.b))
 
+d2.data <- list(n=length(AlgForest.month$Fire),
+               TempCels=AlgForest.month$TempCels,
+               DMC=AlgForest.month$DMC,
+               Ws=AlgForest.month$Ws,
+               RainYest=AlgForest.month$RainYest,
+               j.region=AlgForest.month$j.region,
+               month.b=AlgForest.month$month.b,
+               J=2)
 
+fit.d2 <- jags.model(file=textConnection(model.d2),
+                     data=d2.data,
+                     n.chains=5)
+update(fit.d2, n.iter=7000)
+results.d2 <- coda.samples(fit.d2,
+                           variable.names=c("beta0", "beta1", "beta2", "beta3", "beta4", "beta5"),
+                           n.iter=1e4)
+
+# convergence and summary statistics for d2plot(results.d2)
+plot(results.d2)
+summary(results.d2)
+gelman.diag(results.d2)
+gelman.plot(results.d2)
+round(effectiveSize(results.d2),2)
+acf(results.d2[[1]][,"beta0[1]"])
+acf(results.d2[[1]][,"beta0[2]"])
+acf(results.d2[[1]][,"beta1"])
+acf(results.d2[[1]][,"beta2"])
+acf(results.d2[[1]][,"beta3"])
+acf(results.d2[[1]][,"beta4"])
+acf(results.d2[[1]][,"beta5[1]"])
+acf(results.d2[[1]][,"beta5[2]"])
 ```
 
 ```{r 2.d(iii)}
