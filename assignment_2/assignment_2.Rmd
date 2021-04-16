@@ -483,7 +483,7 @@ p1 <- AlgForest %>%
               se=FALSE)
 
 p2 <- AlgForest %>%
-  ggplot(aes(x=DMC, y=Fire)) +
+  ggplot(aes(x=RH, y=Fire)) +
   geom_point(aes(color=Region), size=2) +
   geom_smooth(method=glm,
               formula='y~x',
@@ -507,9 +507,9 @@ ggarrange(p1, p2, p3, p4,
 
 par(mfrow=c(2,2))
 boxplot(TempCels ~Fire*Region,data=AlgForest, boxfill=c("darkgreen","darkorange2"), xlab="", ylab="", main=("TempCels"))
-boxplot(DMC      ~Fire*Region,data=AlgForest, boxfill=c("darkgreen","darkorange2"), xlab="", ylab="", main=("DMC"))
+boxplot(RH       ~Fire*Region,data=AlgForest, boxfill=c("darkgreen","darkorange2"), xlab="", ylab="", main=("RH"))
 boxplot(Ws       ~Fire*Region,data=AlgForest, boxfill=c("darkgreen","darkorange2"), ylab="", main=("Ws"))
-boxplot(RainYest ~Fire*Region,data=AlgForest, boxfill=c("darkgreen","darkorange2"), ylab="", main=("RainYest"), ylim=c(0,5))
+boxplot(RainYest ~Fire*Region,data=AlgForest, boxfill=c("darkgreen","darkorange2"), ylab="", main=("RainYest"),ylim=c(0,5))
 par(mfrow=c(1,1))
 ```
 
@@ -546,7 +546,7 @@ model.c2 <- "model{
   for(i in 1:n) {
       logit(mu[i]) <- -(beta0 + 
                         beta1*TempCels[i] + 
-                        beta2*DMC[i] + 
+                        beta2*RH[i] + 
                         beta3*Ws[i] + 
                         beta4*RainYest[i])
       Fire[i] ~ dbern(mu[i])
@@ -570,7 +570,7 @@ inits.c2 <- list(list(beta0=0, beta1=0, beta2=0, beta3=0, beta4=0),
 c2.data <- list(n=length(AlgForest$Fire),
                Fire=AlgForest$Fire,
                TempCels=AlgForest$TempCels,
-               DMC=AlgForest$DMC,
+               RH=AlgForest$RH,
                Ws=AlgForest$Ws,
                RainYest=AlgForest$RainYest)
 
@@ -612,7 +612,7 @@ model.d1 <- "model{
       Fire[i] ~ dbern(mu[i])
       logit(mu[i]) <- -(beta0[j.region[i]] + 
                         beta1*TempCels[i] + 
-                        beta2*DMC[i] + 
+                        beta2*RH[i] + 
                         beta3*Ws[i] + 
                         beta4*RainYest[i])
   }
@@ -636,7 +636,7 @@ AlgForest.region <- AlgForest %>%
 d1.data <- list(n=length(AlgForest.region$Fire),
                Fire=AlgForest.region$Fire,
                TempCels=AlgForest.region$TempCels,
-               DMC=AlgForest.region$DMC,
+               RH=AlgForest.region$RH,
                Ws=AlgForest.region$Ws,
                RainYest=AlgForest.region$RainYest,
                j.region=AlgForest.region$j.region,
@@ -669,10 +669,11 @@ acf(results.d1[[1]][,"beta4"])
 model.d2 <- "model{
   # Likelihood
   for(i in 1:n) {
+      Fire.rep[i] ~ dbern(mu[i])
       Fire[i] ~ dbern(mu[i])
       logit(mu[i]) <- -(beta0[j.region[i]] + 
                         beta1*TempCels[i] + 
-                        beta2*DMC[i] + 
+                        beta2*RH[i] + 
                         beta3*Ws[i] + 
                         beta4*RainYest[i] +
                         beta5[month.b[i]]*month.b[i])
@@ -700,7 +701,7 @@ AlgForest.month <- AlgForest.region %>%
 d2.data <- list(n=length(AlgForest.month$Fire),
                Fire=AlgForest.month$Fire,
                TempCels=AlgForest.month$TempCels,
-               DMC=AlgForest.month$DMC,
+               RH=AlgForest.month$RH,
                Ws=AlgForest.month$Ws,
                RainYest=AlgForest.month$RainYest,
                j.region=AlgForest.month$j.region,
@@ -735,10 +736,11 @@ acf(results.d2[[1]][,"beta5[2]"])
 model.d3 <- "model{
   # Likelihood
   for(i in 1:n) {
+      Fire.rep[i] ~ dbern(mu[i])
       Fire[i] ~ dbern(mu[i])
       logit(mu[i]) <- -(beta0[region.month[i]] + 
                         beta1*TempCels[i] + 
-                        beta2*DMC[i] + 
+                        beta2*RH[i] + 
                         beta3*Ws[i] + 
                         beta4*RainYest[i])
   }
@@ -770,7 +772,7 @@ AlgForest.region.month <- AlgForest %>%
 d3.data <- list(n=length(AlgForest.region.month$Fire),
                Fire=AlgForest.region.month$Fire,
                TempCels=AlgForest.region.month$TempCels,
-               DMC=AlgForest.region.month$DMC,
+               RH=AlgForest.region.month$RH,
                Ws=AlgForest.region.month$Ws,
                RainYest=AlgForest.region.month$RainYest,
                region.month=AlgForest.region.month$region.month,
@@ -811,20 +813,91 @@ acf(results.d3[[1]][,"beta4"])
 
 ```
 
-```{r 2.e}
 
-res.d2=coda.samples(fit.d2,
-                    variable.names=c("Fire"),
-                    n.iter=100000)
+```{r 2.e(model.e1)}
+model.e1 <- "model{
+  # Likelihood
+  for(i in 1:n) {
+      Fire.rep[i] ~ dbern(mu[i])
+      Fire[i] ~ dbern(mu[i])
+      logit(mu[i]) <- -(beta0[region.month[i]] + 
+                        beta1*TempCels[i] + 
+                        beta2*DMC[i] + 
+                        beta3*Ws[i] + 
+                        beta4*RainYest[i] +
+                        beta5*RH[i])
+  }
+  
+  # priors for independent intercepts per county
+  for(j in 1:J){
+    beta0[j] ~ dnorm(0, omega)
+  }
+  # prior
+  omega ~ dgamma(0.01,0.01)
+  beta1 ~ dnorm(0,1/100)
+  beta2 ~ dnorm(0,1/100)
+  beta3 ~ dnorm(0,1/100)
+  beta4 ~ dnorm(0,1/100)
+  beta5 ~ dnorm(0,1/100)
+}"
+```
 
+```{r 2.e fit e1}
+e1.data <- list(n=length(AlgForest.region.month$Fire),
+               Fire=AlgForest.region.month$Fire,
+               TempCels=AlgForest.region.month$TempCels,
+               RH=AlgForest.region.month$RH,
+               Ws=AlgForest.region.month$Ws,
+               RainYest=AlgForest.region.month$RainYest,
+               DMC=AlgForest.region.month$DMC,
+               region.month=AlgForest.region.month$region.month,
+               J=max(AlgForest.region.month$region.month))
+
+fit.e1 <- jags.model(file=textConnection(model.e1),
+                     data=e1.data,
+                     n.chains=5)
+update(fit.e1, n.iter=7000)
+results.e1 <- coda.samples(fit.e1,
+                           variable.names=c("omega", "beta1", "beta2", "beta3", "beta4", "beta5"),
+                           n.iter=1e4)
+
+# convergence and summary statistics for d3
+plot(results.e1)
+summary(results.e1)
+gelman.diag(results.e1)
+gelman.plot(results.e1)
+round(effectiveSize(results.e1),2)
+acf(results.e1[[1]][,"omega"])
+acf(results.e1[[1]][,"beta1"])
+acf(results.e1[[1]][,"beta2"])
+acf(results.e1[[1]][,"beta3"])
+acf(results.e1[[1]][,"beta4"])
 ```
 
 
-```{r}
-math <- function(input){
-  return(input(3,2))
+
+```{r 2.e formula - compute.replicates()}
+compute.replicates <- function(fit, iter, var.name, chains) {
+  fit.samples <- NULL
+  res.fit <- coda.samples(fit,
+                          variable.names=c(var.name),
+                          n.iter=iter)
+  for(i in 1:chains){
+    fit.samples <- rbind(fit.samples, res.fit[[i]])
+  }
+  fit.samples <- data.frame(fit.samples) 
+  return(fit.samples)
 }
-
-math(sum)
 ```
 
+
+```{r 2.e}
+# p11 <- 1/(1+ exp(-nu11) ) #inverse-logit
+# results.d2 <- do.call(rbind.data.frame, results.d2)
+# mu <- exp(results.d2$`beta0[1]`)
+
+
+res.d2 <- compute.replicates(fit=fit.d2, iter=1e4, var.name="Fire.rep", chains=5)
+res.d3 <- compute.replicates(fit=fit.d3, iter=1e4, var.name="Fire.rep", chains=5)
+res.e1 <- compute.replicates(fit=fit.e1, iter=1e4, var.name="Fire.rep", chains=5)
+```
