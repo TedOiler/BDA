@@ -111,6 +111,32 @@ earthQ %>%
 
 ```
 
+```{r helper}
+b.fit.transform <- function(inits=NULL, data, model, chains=3, burnin, var.names, total){
+  
+  fit <- jags.model(file=textConnection(model),
+                     data=data, 
+                     inits=inits,
+                     n.chains=chains)
+  update(fit, n.iter=burnin)
+  results <- coda.samples(fit,
+                          variable.names=var.names,
+                          n.iter=total)
+  plot(results)
+  summary(results)
+  gelman.diag(results)
+  gelman.plot(results)
+  round(effectiveSize(results),3)
+  
+  for(i in 1:length(var.names)){
+    acf(results[[1]][,i])
+  }
+  
+  return(list(fit, results))
+}
+```
+
+
 ```{r 1.b(model.s)}
 model.s <- "model{
   # Hyperparameters
@@ -126,19 +152,33 @@ model.s <- "model{
       eartScot[i] ~ dpois(mu[i])
     } 
   }"
+```
+
+
+```{r 1.b(i)}
 inits <- list(list(lambda=10^0),
               list(lambda=10^1),
               list(lambda=10^2),
               list(lambda=10^3),
               list(lambda=10^4))
-```
 
-```{r 1.b(i)}
 b1.data <- list(n=length(earthQ$eartrUK),
                eartScot=earthQ$eartScot,
                eartrUK =earthQ$eartrUK,
                a=0.01,
                b=0.01)
+
+test <- b.fit.transform(inits=inits,
+                data=b1.data,
+                model=model.s,
+                chains=5,
+                burnin=7000,
+                var.names=c("lambda"),
+                total=1e4)
+
+test[[2]]
+fit.b1
+results.b1
 
 fit.b1 <- jags.model(file=textConnection(model.s),
                      data=b1.data, 
@@ -920,7 +960,7 @@ calculate.prob <- function(resample, original){
   prob.table <- left_join(x=resample, y=original, by="region.month") 
   prob.final <- prob.table %>%
     group_by(region.month) %>%
-    mutate(prob=sum(total.fires<name)/(chains*iter)) %>%
+    mutate(prob=sum(total.fires>name)/(chains*iter)) %>%
     distinct(region.month, prob)
   return(prob.final)
 }
@@ -955,7 +995,8 @@ d1 <- fire.rm.d2 %>% ggplot(aes(x=total.fires, y=as.factor(region.month), fill=R
                    y=as.numeric(as.factor(region.month)),
                    yend=as.numeric(as.factor(region.month))+1.5),
              color = "red", inherit.aes = F) +
-  theme(legend.position="none")
+  theme(legend.position="none") +
+  labs(y="Region-month", x="Total Fires")
 
 d2 <- fire.rm.d3 %>% ggplot(aes(x=total.fires, y=as.factor(region.month), fill=Region)) +
   geom_density_ridges() +
@@ -967,7 +1008,8 @@ d2 <- fire.rm.d3 %>% ggplot(aes(x=total.fires, y=as.factor(region.month), fill=R
   theme(legend.position="none",
         axis.title.y = element_blank(),
         axis.text.y = element_blank(),
-        axis.ticks.y = element_blank())
+        axis.ticks.y = element_blank()) +
+  labs(x="Total Fires")
 
 d3 <- fire.rm.e1 %>% ggplot(aes(x=total.fires, y=as.factor(region.month), fill=Region)) +
   geom_density_ridges() +
@@ -979,9 +1021,10 @@ d3 <- fire.rm.e1 %>% ggplot(aes(x=total.fires, y=as.factor(region.month), fill=R
   theme(legend.position="none",
         axis.title.y = element_blank(),
         axis.text.y = element_blank(),
-        axis.ticks.y = element_blank())
+        axis.ticks.y = element_blank()) +
+  labs(x="Total Fires")
 
-ggarrange(d1, d2, d3, ncol=3, nrow=1)
+ggarrange(d1, d2, d3, ncol=3, nrow=1) %>% annotate_figure(., top=text_grob("Distribution of wild fires per region per month"))
 
 # compute the probability
 calculate.prob(resample=fire.rm.d2, original=fire.rm.oj)
@@ -1000,6 +1043,7 @@ dic.e1
 
 # predict on new data
 results.e1.pr <- inv.logit(do.call(rbind.data.frame, results.e1)) %>% data.frame() 
+
 ```
 
 ```{r final}
