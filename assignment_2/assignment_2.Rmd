@@ -112,7 +112,7 @@ earthQ %>%
 ```
 
 ```{r helper}
-b.fit.transform <- function(inits=NULL, data, model, chains=3, burnin, var.names, total){
+b.fit.transform <- function(inits=NULL, data, model, chains=3, burnin, var.names, total, thin=1){
   
   fit <- jags.model(file=textConnection(model),
                      data=data, 
@@ -121,18 +121,18 @@ b.fit.transform <- function(inits=NULL, data, model, chains=3, burnin, var.names
   update(fit, n.iter=burnin)
   results <- coda.samples(fit,
                           variable.names=var.names,
-                          n.iter=total)
+                          n.iter=total,
+                          thin=thin)
   plot(results)
-  summary(results)
-  gelman.diag(results)
   gelman.plot(results)
-  round(effectiveSize(results),3)
-  
   for(i in 1:length(var.names)){
     acf(results[[1]][,i])
   }
   
-  return(list(fit, results))
+  return(list(fit,
+              results,
+              gelman.diag(results),
+              round(effectiveSize(results),3)))
 }
 ```
 
@@ -168,34 +168,20 @@ b1.data <- list(n=length(earthQ$eartrUK),
                a=0.01,
                b=0.01)
 
-test <- b.fit.transform(inits=inits,
-                data=b1.data,
-                model=model.s,
-                chains=5,
-                burnin=7000,
-                var.names=c("lambda"),
-                total=1e4)
-
-test[[2]]
-fit.b1
-results.b1
-
-fit.b1 <- jags.model(file=textConnection(model.s),
-                     data=b1.data, 
-                     inits=inits,
-                     n.chains=5)
-update(fit.b1, n.iter=7000)
-results.b1 <- coda.samples(fit.b1,
-                           variable.names=c("lambda"),
-                           n.iter=1e4)
-
-# convergence and summary statistics for b1
-plot(results.b1)
+b1 <- b.fit.transform(inits=inits,
+                      data=b1.data,
+                      model=model.s,
+                      chains=5,
+                      burnin=7000,
+                      var.names=c("lambda"),
+                      total=1e4)
+fit.b1     <- b1[[1]]
+results.b1 <- b1[[2]]
+gelman.b1  <- b1[[3]]
+neff.b1    <- b1[[4]]
 summary(results.b1)
-gelman.diag(results.b1)
-gelman.plot(results.b1)
-round(effectiveSize(results.b1),2)
-acf(results.b1[[1]][,"lambda"])
+gelman.b1
+neff.b1
 ```
 
 ```{r 1.b(ii)}
@@ -205,23 +191,20 @@ b2.data <- list(n=length(earthQ$eartrUK),
                a=16,
                b=20)
 
-fit.b2 <- jags.model(file=textConnection(model.s),
-                     data=b2.data,
-                     inits=inits,
-                     n.chains=5)
-update(fit.b2, n.iter=7000)
-results.b2 <- coda.samples(fit.b2,
-                           variable.names=c("lambda"),
-                           n.iter=1e4)
-
-
-# convergence and summary statistics for b2
-plot(results.b2)
-summary(results.b2)
-gelman.diag(results.b2)
-gelman.plot(results.b2)
-round(effectiveSize(results.b2),2)
-acf(results.b2[[1]][,"lambda"])
+b2 <- b.fit.transform(inits=inits,
+                      data=b2.data,
+                      model=model.s,
+                      chains=5,
+                      burnin=7000,
+                      var.names=c("lambda"),
+                      total=1e4)
+fit.b2     <- b2[[1]]
+results.b2 <- b2[[2]]
+gelman.b2  <- b2[[3]]
+neff.b2    <- b2[[4]]
+summary(results.b1)
+gelman.b2
+neff.b2
 ```
 
 ```{r 1.b(model.h)}
@@ -242,14 +225,15 @@ model.h <- "model{
       eartScot[i] ~ dpois(mu[i])
     } 
   }"
+```
+
+```{r 1.b(iii)}
 inits <- list(list(lambda=10^0),
               list(lambda=10^1),
               list(lambda=10^2),
               list(lambda=10^3),
               list(lambda=10^4))
-```
 
-```{r 1.b(iii)}
 b3.data <- list(n=length(earthQ$eartrUK),
                eartScot=earthQ$eartScot,
                eartrUK =earthQ$eartrUK,
@@ -257,25 +241,21 @@ b3.data <- list(n=length(earthQ$eartrUK),
                b=4,
                tau=log(1.64))
 
-fit.b3 <- jags.model(file=textConnection(model.h),
-                     data=b3.data, 
-                     inits=inits,
-                     n.chains=5)
-update(fit.b3, n.iter=6000)
-results.b3 <- coda.samples(fit.b3,
-                           variable.names=c("lambda", "a.0", "b.0"),
-                           n.iter=1e5,
-                           thin=50)
-
-# convergence and summary statistics for b3
-plot(results.b3)
+b3 <- b.fit.transform(inits=inits,
+                      data=b3.data,
+                      model=model.h,
+                      chains=5,
+                      burnin=7000,
+                      var.names=c("lambda", "a.0", "b.0"),
+                      total=1e5,
+                      thin=50)
+fit.b3     <- b3[[1]]
+results.b3 <- b3[[2]]
+gelman.b3  <- b3[[3]]
+neff.b3    <- b3[[4]]
 summary(results.b3)
-gelman.diag(results.b3)
-gelman.plot(results.b3)
-round(effectiveSize(results.b3),2)
-acf(results.b3[[1]][,"lambda"])
-acf(results.b3[[1]][,"a.0"])
-acf(results.b3[[1]][,"b.0"])
+gelman.b3
+neff.b3
 ```
 
 ```{r 1.c(model.c1)}
@@ -297,24 +277,19 @@ c1.data <- list(n=length(earthQ$eartrUK),
                eartScot=earthQ$eartScot,
                dist =earthQ$dist)
 
-fit.c1 <- jags.model(file=textConnection(model.c1),
-                     data=c1.data, 
-                     inits=inits,
-                     n.chains=5)
-update(fit.c1, n.iter=6000)
-results.c1 <- coda.samples(fit.c1,
-                           variable.names=c("beta0", "beta1"),
-                           n.iter=1e4,
-                           thin=5)
-
-# convergence and summary statistics for c1
-plot(results.c1)
+c1 <- b.fit.transform(data=c1.data,
+                      model=model.c1,
+                      chains=5,
+                      burnin=6000,
+                      var.names=c("beta0", "beta1"),
+                      total=1e4)
+fit.c1     <- c1[[1]]
+results.c1 <- c1[[2]]
+gelman.c1  <- c1[[3]]
+neff.c1    <- c1[[4]]
 summary(results.c1)
-gelman.diag(results.c1)
-gelman.plot(results.c1)
-round(effectiveSize(results.c1),2)
-acf(results.c1[[1]][,"beta0"])
-acf(results.c1[[1]][,"beta1"])
+gelman.c1
+neff.c1
 ```
 
 ```{r 1.d(model.d1)}
@@ -339,25 +314,20 @@ d1.data <- list(n=length(earthQ$eartrUK),
                eartScot=earthQ$eartScot,
                dist=earthQ$dist)
 
-fit.d1 <- jags.model(file=textConnection(model.d1),
-                     data=d1.data, 
-                     inits=inits,
-                     n.chains=5)
-update(fit.d1, n.iter=6000)
-results.d1 <- coda.samples(fit.d1,
-                           variable.names=c("beta0", "beta1", "sigma.delta"),
-                           n.iter=1e5,
-                           thin=100)
-
-# convergence and summary statistics for c1
-plot(results.d1)
+d1 <- b.fit.transform(data=d1.data,
+                      model=model.d1,
+                      chains=5,
+                      burnin=6000,
+                      var.names=c("beta0", "beta1", "sigma.delta"),
+                      total=1e5,
+                      thin=100)
+fit.d1     <- d1[[1]]
+results.d1 <- d1[[2]]
+gelman.d1  <- d1[[3]]
+neff.d1    <- d1[[4]]
 summary(results.d1)
-gelman.diag(results.d1)
-gelman.plot(results.d1)
-round(effectiveSize(results.d1),2)
-acf(results.d1[[1]][,"beta0"])
-acf(results.d1[[1]][,"beta1"])
-acf(results.d1[[1]][,"sigma.delta"])
+gelman.d1
+neff.d1
 ```
 
 
@@ -383,8 +353,7 @@ earthQ.imp <- earthQ %>%
   mutate(`nrUK>4.5` = ifelse(is.na(`nrUK>4.5`),
                              round(predict(imputation, type="response"),0),
                               `nrUK>4.5`))
-earthQ.imp
-
+# earthQ.imp
 ```
 
 
@@ -393,24 +362,20 @@ e1.data <- list(n=length(earthQ.imp$eartrUK),
                eartScot=earthQ.imp$eartScot,
                nrUK =earthQ.imp$`nrUK>4.5`)
 
-fit.e1 <- jags.model(file=textConnection(model.e1),
-                     data=e1.data, 
-                     inits=inits,
-                     n.chains=5)
-update(fit.e1, n.iter=6000)
-results.e1 <- coda.samples(fit.e1,
-                           variable.names=c("beta0", "beta1"),
-                           n.iter=1e4,
-                           thin=5)
-
-# convergence and summary statistics for e1
-plot(results.e1)
+e1 <- b.fit.transform(data=e1.data,
+                      model=model.e1,
+                      chains=5,
+                      burnin=6000,
+                      var.names=c("beta0", "beta1"),
+                      total=1e4,
+                      thin=5)
+fit.e1     <- e1[[1]]
+results.e1 <- e1[[2]]
+gelman.e1  <- e1[[3]]
+neff.e1    <- e1[[4]]
 summary(results.e1)
-gelman.diag(results.e1)
-gelman.plot(results.e1)
-round(effectiveSize(results.e1),2)
-acf(results.e1[[1]][,"beta0"])
-acf(results.e1[[1]][,"beta1"])
+gelman.e1
+neff.e1
 ```
 
 ```{r 1.e(model.e2)}
@@ -445,25 +410,20 @@ e2.data <- list(n=length(earthQ.imp$eartrUK),
                a.nrUK=6.25,
                b.nrUK=5.25) # a and b chosen for mean 1 and CV 0.4
 
-fit.e2 <- jags.model(file=textConnection(model.e2),
-                     data=e2.data, 
-                     inits=inits,
-                     n.chains=5)
-update(fit.e2, n.iter=6000)
-results.e2 <- coda.samples(fit.e2,
-                           variable.names=c("beta0", "beta1"),
-                           n.iter=1e4,
-                           thin=5)
-
-# convergence and summary statistics for e1
-#diagMCMC(results.e2)
-plot(results.e2)
+e2 <- b.fit.transform(data=e2.data,
+                      model=model.e2,
+                      chains=5,
+                      burnin=6000,
+                      var.names=c("beta0", "beta1"),
+                      total=1e4,
+                      thin=5)
+fit.e2     <- e2[[1]]
+results.e2 <- e2[[2]]
+gelman.e2  <- e2[[3]]
+neff.e2    <- e2[[4]]
 summary(results.e2)
-gelman.diag(results.e2)
-gelman.plot(results.e2)
-round(effectiveSize(results.e2),2)
-acf(results.e2[[1]][,"beta0"])
-acf(results.e2[[1]][,"beta1"])
+gelman.e2
+neff.e2
 ```
 
 
@@ -608,13 +568,13 @@ model.c2 <- "model{
 
 AlgForest <- AlgForest %>% mutate(Fire=as.numeric(Fire)-1)
 
-AlgForest
+# AlgForest
 
 inits.c2 <- list(list(beta0=0, beta1=0, beta2=0, beta3=0, beta4=0),
-              list(beta0=0, beta1=0, beta2=0, beta3=0, beta4=0),
-              list(beta0=0, beta1=0, beta2=0, beta3=0, beta4=0),
-              list(beta0=0, beta1=0, beta2=0, beta3=0, beta4=0),
-              list(beta0=0, beta1=0, beta2=0, beta3=0, beta4=0))
+                 list(beta0=0, beta1=0, beta2=0, beta3=0, beta4=0),
+                 list(beta0=0, beta1=0, beta2=0, beta3=0, beta4=0),
+                 list(beta0=0, beta1=0, beta2=0, beta3=0, beta4=0),
+                 list(beta0=0, beta1=0, beta2=0, beta3=0, beta4=0))
 
 c2.data <- list(n=length(AlgForest$Fire),
                Fire=AlgForest$Fire,
@@ -623,25 +583,19 @@ c2.data <- list(n=length(AlgForest$Fire),
                Ws=AlgForest$Ws,
                RainYest=AlgForest$RainYest)
 
-fit.c2 <- jags.model(file=textConnection(model.c2),
-                     data=c2.data,
-                     n.chains=3)
-update(fit.c2, n.iter=7000)
-results.c2 <- coda.samples(fit.c2,
-                           variable.names=c("beta0", "beta1", "beta2", "beta3", "beta4"),
-                           n.iter=1e4)
-
-# convergence and summary statistics for c2
-plot(results.c2)
+c2 <- b.fit.transform(data=c2.data,
+                      model=model.c2,
+                      chains=3,
+                      burnin=7000,
+                      var.names=c("beta0", "beta1", "beta2", "beta3", "beta4"),
+                      total=1e4)
+fit.c2     <- c2[[1]]
+results.c2 <- c2[[2]]
+gelman.c2  <- c2[[3]]
+neff.c2    <- c2[[4]]
 summary(results.c2)
-gelman.diag(results.c2)
-gelman.plot(results.c2)
-round(effectiveSize(results.c2),2)
-acf(results.c2[[1]][,"beta0"])
-acf(results.c2[[1]][,"beta1"])
-acf(results.c2[[1]][,"beta2"])
-acf(results.c2[[1]][,"beta3"])
-acf(results.c2[[1]][,"beta4"])
+gelman.c2
+neff.c2
 ```
 
 ```{r 2.c(results)}
@@ -691,26 +645,19 @@ d1.data <- list(n=length(AlgForest.region$Fire),
                j.region=AlgForest.region$j.region,
                J=2)
 
-fit.d1 <- jags.model(file=textConnection(model.d1),
-                     data=d1.data,
-                     n.chains=5)
-update(fit.d1, n.iter=7000)
-results.d1 <- coda.samples(fit.d1,
-                           variable.names=c("beta0", "beta1", "beta2", "beta3", "beta4"),
-                           n.iter=1e4)
-
-# convergence and summary statistics for d1
-plot(results.d1)
+d1 <- b.fit.transform(data=d1.data,
+                      model=model.d1,
+                      chains=5,
+                      burnin=7000,
+                      var.names=c("beta0[1]", "beta0[2]", "beta1", "beta2", "beta3", "beta4"),
+                      total=1e4)
+fit.d1     <- d1[[1]]
+results.d1 <- d1[[2]]
+gelman.d1  <- d1[[3]]
+neff.d1    <- d1[[4]]
 summary(results.d1)
-gelman.diag(results.d1)
-gelman.plot(results.d1)
-round(effectiveSize(results.d1),2)
-acf(results.d1[[1]][,"beta0[1]"])
-acf(results.d1[[1]][,"beta0[2]"])
-acf(results.d1[[1]][,"beta1"])
-acf(results.d1[[1]][,"beta2"])
-acf(results.d1[[1]][,"beta3"])
-acf(results.d1[[1]][,"beta4"])
+gelman.d1
+neff.d1
 ```
 
 
@@ -757,28 +704,19 @@ d2.data <- list(n=length(AlgForest.month$Fire),
                month.b=AlgForest.month$month.b,
                J=2)
 
-fit.d2 <- jags.model(file=textConnection(model.d2),
-                     data=d2.data,
-                     n.chains=5)
-update(fit.d2, n.iter=7000)
-results.d2 <- coda.samples(fit.d2,
-                           variable.names=c("beta0", "beta1", "beta2", "beta3", "beta4", "beta5"),
-                           n.iter=1e4)
-
-# convergence and summary statistics for d2plot(results.d2)
-plot(results.d2)
+d2 <- b.fit.transform(data=d2.data,
+                      model=model.d2,
+                      chains=5,
+                      burnin=7000,
+                      var.names=c("beta0[1]", "beta0[2]", "beta1", "beta2", "beta3", "beta4", "beta5[1]", "beta5[2]"),
+                      total=1e4)
+fit.d2     <- d2[[1]]
+results.d2 <- d2[[2]]
+gelman.d2  <- d2[[3]]
+neff.d2    <- d2[[4]]
 summary(results.d2)
-gelman.diag(results.d2)
-gelman.plot(results.d2)
-round(effectiveSize(results.d2),2)
-acf(results.d2[[1]][,"beta0[1]"])
-acf(results.d2[[1]][,"beta0[2]"])
-acf(results.d2[[1]][,"beta1"])
-acf(results.d2[[1]][,"beta2"])
-acf(results.d2[[1]][,"beta3"])
-acf(results.d2[[1]][,"beta4"])
-acf(results.d2[[1]][,"beta5[1]"])
-acf(results.d2[[1]][,"beta5[2]"])
+gelman.d2
+neff.d2
 ```
 
 ```{r 2.d(model.d3)}
@@ -827,25 +765,19 @@ d3.data <- list(n=length(AlgForest.region.month$Fire),
                region.month=AlgForest.region.month$region.month,
                J=max(AlgForest.region.month$region.month))
 
-fit.d3 <- jags.model(file=textConnection(model.d3),
-                     data=d3.data,
-                     n.chains=5)
-update(fit.d3, n.iter=7000)
-results.d3 <- coda.samples(fit.d3,
-                           variable.names=c("omega", "beta1", "beta2", "beta3", "beta4"),
-                           n.iter=1e4)
-
-# convergence and summary statistics for d3
-plot(results.d3)
+d3 <- b.fit.transform(data=d3.data,
+                      model=model.d3,
+                      chains=5,
+                      burnin=7000,
+                      var.names=c("omega", "beta1", "beta2", "beta3", "beta4"),
+                      total=1e4)
+fit.d3     <- d3[[1]]
+results.d3 <- d3[[2]]
+gelman.d3  <- d3[[3]]
+neff.d3    <- d3[[4]]
 summary(results.d3)
-gelman.diag(results.d3)
-gelman.plot(results.d3)
-round(effectiveSize(results.d3),2)
-acf(results.d3[[1]][,"omega"])
-acf(results.d3[[1]][,"beta1"])
-acf(results.d3[[1]][,"beta2"])
-acf(results.d3[[1]][,"beta3"])
-acf(results.d3[[1]][,"beta4"])
+gelman.d3
+neff.d3
 ```
 
 ```{r 2.d(iii) INLA model}
@@ -902,25 +834,21 @@ e1.data <- list(n=length(AlgForest.region.month$Fire),
                region.month=AlgForest.region.month$region.month,
                J=max(AlgForest.region.month$region.month))
 
-fit.e1 <- jags.model(file=textConnection(model.e1),
-                     data=e1.data,
-                     n.chains=5)
-update(fit.e1, n.iter=7000)
-results.e1 <- coda.samples(fit.e1,
-                           variable.names=c("omega", "beta1", "beta2", "beta3", "beta4", "beta5","beta0"),
-                           n.iter=1e4)
-
-# convergence and summary statistics for d3
-plot(results.e1)
+e1 <- b.fit.transform(data=e1.data,
+                      model=model.e1,
+                      chains=5,
+                      burnin=7000,
+                      var.names=c("omega","beta1","beta2","beta3","beta4","beta5",
+                                            "beta0[1]","beta0[2]","beta0[3]","beta0[4]",
+                                            "beta0[5]","beta0[6]","beta0[7]","beta0[8]"),
+                      total=1e4)
+fit.e1     <- e1[[1]]
+results.e1 <- e1[[2]]
+gelman.e1  <- e1[[3]]
+neff.e1    <- e1[[4]]
 summary(results.e1)
-gelman.diag(results.e1)
-gelman.plot(results.e1)
-round(effectiveSize(results.e1),2)
-acf(results.e1[[1]][,"omega"])
-acf(results.e1[[1]][,"beta1"])
-acf(results.e1[[1]][,"beta2"])
-acf(results.e1[[1]][,"beta3"])
-acf(results.e1[[1]][,"beta4"])
+gelman.e1
+neff.e1
 ```
 
 
@@ -950,7 +878,6 @@ replicates.tidy <- function(res){
   pivot_longer(cols=-c(Region, month), names_to="index", values_to="total.fires") %>%
   mutate(region.month=paste(Region, month)) %>%
   relocate(region.month)
-  
   return(df)
 }
 ```
@@ -969,7 +896,7 @@ calculate.prob <- function(resample, original){
 
 ```{r 2.e}
 chains = 5
-iter = 1e1
+iter = 1e4
 res.d2 <- compute.replicates(fit=fit.d2, iter=iter, var.name="Fire.rep", chains=chains)
 res.d3 <- compute.replicates(fit=fit.d3, iter=iter, var.name="Fire.rep", chains=chains)
 res.e1 <- compute.replicates(fit=fit.e1, iter=iter, var.name="Fire.rep", chains=chains)
@@ -988,18 +915,18 @@ fire.rm.d3 <- replicates.tidy(res=res.d3)
 fire.rm.e1 <- replicates.tidy(res=res.e1)
 
 # ggplot of densities per region per month
-d1 <- fire.rm.d2 %>% ggplot(aes(x=total.fires, y=as.factor(region.month), fill=Region)) +
-  geom_density_ridges() +
+d1 <- fire.rm.d2 %>% ggplot(aes(x=total.fires, y=as.factor(region.month), fill=Region, height = stat(density))) +
+  geom_density_ridges(stat = "binline", bins=30, draw_baseline = FALSE) +
   geom_segment(data=fire.rm.oj,
                aes(x=name, xend=name,
                    y=as.numeric(as.factor(region.month)),
                    yend=as.numeric(as.factor(region.month))+1.5),
              color = "red", inherit.aes = F) +
   theme(legend.position="none") +
-  labs(y="Region-month", x="Total Fires")
+  labs(y="Region-month", x="Total Fires", title="Model d2")
 
-d2 <- fire.rm.d3 %>% ggplot(aes(x=total.fires, y=as.factor(region.month), fill=Region)) +
-  geom_density_ridges() +
+d2 <- fire.rm.d3 %>% ggplot(aes(x=total.fires, y=as.factor(region.month), fill=Region, height = stat(density))) +
+  geom_density_ridges(stat = "binline", bins=30, draw_baseline = FALSE) +
   geom_segment(data=fire.rm.oj,
                aes(x=name, xend=name,
                    y=as.numeric(as.factor(region.month)),
@@ -1009,10 +936,10 @@ d2 <- fire.rm.d3 %>% ggplot(aes(x=total.fires, y=as.factor(region.month), fill=R
         axis.title.y = element_blank(),
         axis.text.y = element_blank(),
         axis.ticks.y = element_blank()) +
-  labs(x="Total Fires")
+  labs(x="Total Fires", title="Model d3")
 
-d3 <- fire.rm.e1 %>% ggplot(aes(x=total.fires, y=as.factor(region.month), fill=Region)) +
-  geom_density_ridges() +
+d3 <- fire.rm.e1 %>% ggplot(aes(x=total.fires, y=as.factor(region.month), fill=Region, height = stat(density))) +
+  geom_density_ridges(stat = "binline", bins=30, draw_baseline = FALSE) +
   geom_segment(data=fire.rm.oj,
                aes(x=name, xend=name,
                    y=as.numeric(as.factor(region.month)),
@@ -1022,9 +949,9 @@ d3 <- fire.rm.e1 %>% ggplot(aes(x=total.fires, y=as.factor(region.month), fill=R
         axis.title.y = element_blank(),
         axis.text.y = element_blank(),
         axis.ticks.y = element_blank()) +
-  labs(x="Total Fires")
+  labs(x="Total Fires", title="Model e1")
 
-ggarrange(d1, d2, d3, ncol=3, nrow=1) %>% annotate_figure(., top=text_grob("Distribution of wild fires per region per month"))
+ggarrange(d1, d2, d3, ncol=3, nrow=1) %>% annotate_figure(top=text_grob("Distribution of wild fires per region per month"))
 
 # compute the probability
 calculate.prob(resample=fire.rm.d2, original=fire.rm.oj)
