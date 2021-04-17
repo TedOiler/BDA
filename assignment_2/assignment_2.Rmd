@@ -535,6 +535,13 @@ a2.prob <- a2 %>% predict(., type="response", newdata=new.data)
 prb <- 1-a2.prob
 ```
 
+```{r 2.c function - inv.logit}
+inv.logit <- function(x) {
+  return(1/(1+exp(-x)))
+}
+```
+
+
 ```{r 2.c(models b)}
 model.c2 <- "model{
   # prior
@@ -892,7 +899,7 @@ compute.replicates <- function(fit, iter, var.name, chains) {
 }
 ```
 
-```{r 2.e formula - replicates.tidy}
+```{r 2.e formula - replicates.tidy()}
 replicates.tidy <- function(res){
   df <- transpose(res) %>%
   mutate(Region = AlgForest$Region,
@@ -908,125 +915,110 @@ replicates.tidy <- function(res){
 }
 ```
 
+```{r  2.e formula - calculate.prob()}
+calculate.prob <- function(resample, original){
+  prob.table <- left_join(x=resample, y=original, by="region.month") 
+  prob.final <- prob.table %>%
+    group_by(region.month) %>%
+    mutate(prob=sum(total.fires<name)/(chains*iter)) %>%
+    distinct(region.month, prob)
+  return(prob.final)
+}
+```
+
+
 ```{r 2.e}
-res.d2 <- compute.replicates(fit=fit.d2, iter=1e1, var.name="Fire.rep", chains=5)
-res.d3 <- compute.replicates(fit=fit.d3, iter=1e1, var.name="Fire.rep", chains=5)
-res.e1 <- compute.replicates(fit=fit.e1, iter=1e1, var.name="Fire.rep", chains=5)
+chains = 5
+iter = 1e1
+res.d2 <- compute.replicates(fit=fit.d2, iter=iter, var.name="Fire.rep", chains=chains)
+res.d3 <- compute.replicates(fit=fit.d3, iter=iter, var.name="Fire.rep", chains=chains)
+res.e1 <- compute.replicates(fit=fit.e1, iter=iter, var.name="Fire.rep", chains=chains)
 
 fire.rm.oj <- AlgForest %>%
   group_by(Region, month) %>%
   summarise_at(vars(Fire),    
                list(name=sum)) %>%
   mutate(region.month=paste(Region, month)) %>%
-  relocate(region.month)
+  relocate(region.month) %>% 
+  ungroup() %>% 
+  select(region.month, name)
 
 fire.rm.d2 <- replicates.tidy(res=res.d2)
 fire.rm.d3 <- replicates.tidy(res=res.d3)
 fire.rm.e1 <- replicates.tidy(res=res.e1)
 
-
-fire.rm.d2 %>% ggplot(aes(x=total.fires, y=as.factor(region.month), fill=Region)) +
+# ggplot of densities per region per month
+d1 <- fire.rm.d2 %>% ggplot(aes(x=total.fires, y=as.factor(region.month), fill=Region)) +
   geom_density_ridges() +
   geom_segment(data=fire.rm.oj,
                aes(x=name, xend=name,
                    y=as.numeric(as.factor(region.month)),
                    yend=as.numeric(as.factor(region.month))+1.5),
-             color = "red", inherit.aes = F)
+             color = "red", inherit.aes = F) +
+  theme(legend.position="none")
 
-# geom_density_ridges
-```
+d2 <- fire.rm.d3 %>% ggplot(aes(x=total.fires, y=as.factor(region.month), fill=Region)) +
+  geom_density_ridges() +
+  geom_segment(data=fire.rm.oj,
+               aes(x=name, xend=name,
+                   y=as.numeric(as.factor(region.month)),
+                   yend=as.numeric(as.factor(region.month))+1.5),
+             color = "red", inherit.aes = F) +
+  theme(legend.position="none",
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank())
 
-```{r}
-iris_lines <- data.frame(Species = c("setosa", "versicolor", "virginica"),
-                         x0 = c(5, 5.9, 6.5))
+d3 <- fire.rm.e1 %>% ggplot(aes(x=total.fires, y=as.factor(region.month), fill=Region)) +
+  geom_density_ridges() +
+  geom_segment(data=fire.rm.oj,
+               aes(x=name, xend=name,
+                   y=as.numeric(as.factor(region.month)),
+                   yend=as.numeric(as.factor(region.month))+1.5),
+             color = "red", inherit.aes = F) +
+  theme(legend.position="none",
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank())
 
-Figure1 <- ggplot(iris, aes(x=Sepal.Length, y=Species, fill=(..quantile..))) +
-      geom_density_ridges_gradient(jittered_points = FALSE, 
-                                   calc_ecdf = TRUE, 
-                                   quantile_lines = c(TRUE), 
-                                   quantiles =c(0.1,0.25,0.75,0.9),
-                                   scale=0.9, color='white') +
-      geom_segment(data = iris_lines, 
-                   aes(x = x0, xend = x0, 
-                       y = as.numeric(Species), yend = as.numeric(Species) + c(.9,.5,.5)),
-                   color = "red", inherit.aes = F) +   #### HERE ####
-      scale_y_discrete(expand = c(0.01, 0))
-Figure1
-```
+ggarrange(d1, d2, d3, ncol=3, nrow=1)
 
+# compute the probability
+calculate.prob(resample=fire.rm.d2, original=fire.rm.oj)
+calculate.prob(resample=fire.rm.d3, original=fire.rm.oj)
+calculate.prob(resample=fire.rm.e1, original=fire.rm.oj)
 
-```{r final}
-samples.median.d2=apply(res.d2,MARGIN=1, FUN=median)
-samples.median.d3=apply(res.d3,MARGIN=1, FUN=median)
-samples.median.e1=apply(res.e1,MARGIN=1, FUN=median)
+# compute dic scores
 
-ind.region.B.month.6 <- which(AlgForest$Region == "B" & AlgForest$month == 6)
-ind.region.B.month.7 <- which(AlgForest$Region == "B" & AlgForest$month == 7)
-ind.region.B.month.8 <- which(AlgForest$Region == "B" & AlgForest$month == 8)
-ind.region.B.month.9 <- which(AlgForest$Region == "B" & AlgForest$month == 9)
-ind.region.S.month.6 <- which(AlgForest$Region == "S" & AlgForest$month == 6)
-ind.region.S.month.7 <- which(AlgForest$Region == "S" & AlgForest$month == 7)
-ind.region.S.month.8 <- which(AlgForest$Region == "S" & AlgForest$month == 8)
-ind.region.S.month.9 <- which(AlgForest$Region == "S" & AlgForest$month == 9)
-#--
-p.d2.B.6 <- sum(samples.median.d2 < median(AlgForest$Fire[ind.region.B.month.6])) /length(samples.median.d2)
-p.d2.B.7 <- sum(samples.median.d2 < median(AlgForest$Fire[ind.region.B.month.7])) /length(samples.median.d2)
-p.d2.B.8 <- sum(samples.median.d2 < median(AlgForest$Fire[ind.region.B.month.8])) /length(samples.median.d2)
-p.d2.B.9 <- sum(samples.median.d2 < median(AlgForest$Fire[ind.region.B.month.9])) /length(samples.median.d2)
-p.d2.S.6 <- sum(samples.median.d2 < median(AlgForest$Fire[ind.region.S.month.6])) /length(samples.median.d2)
-p.d2.S.7 <- sum(samples.median.d2 < median(AlgForest$Fire[ind.region.S.month.7])) /length(samples.median.d2)
-p.d2.S.8 <- sum(samples.median.d2 < median(AlgForest$Fire[ind.region.S.month.8])) /length(samples.median.d2)
-p.d2.S.9 <- sum(samples.median.d2 < median(AlgForest$Fire[ind.region.S.month.9])) /length(samples.median.d2)
-#--
-p.d3.B.6 <- sum(samples.median.d3 < median(AlgForest$Fire[ind.region.B.month.6])) /length(samples.median.d3)
-p.d3.B.7 <- sum(samples.median.d3 < median(AlgForest$Fire[ind.region.B.month.7])) /length(samples.median.d3)
-p.d3.B.8 <- sum(samples.median.d3 < median(AlgForest$Fire[ind.region.B.month.8])) /length(samples.median.d3)
-p.d3.B.9 <- sum(samples.median.d3 < median(AlgForest$Fire[ind.region.B.month.9])) /length(samples.median.d3)
-p.d3.S.6 <- sum(samples.median.d3 < median(AlgForest$Fire[ind.region.S.month.6])) /length(samples.median.d3)
-p.d3.S.7 <- sum(samples.median.d3 < median(AlgForest$Fire[ind.region.S.month.7])) /length(samples.median.d3)
-p.d3.S.8 <- sum(samples.median.d3 < median(AlgForest$Fire[ind.region.S.month.8])) /length(samples.median.d3)
-p.d3.S.9 <- sum(samples.median.d3 < median(AlgForest$Fire[ind.region.S.month.9])) /length(samples.median.d3)
-#--
-p.e1.B.6 <- sum(samples.median.e1 < median(AlgForest$Fire[ind.region.B.month.6])) /length(samples.median.e1)
-p.e1.B.7 <- sum(samples.median.e1 < median(AlgForest$Fire[ind.region.B.month.7])) /length(samples.median.e1)
-p.e1.B.8 <- sum(samples.median.e1 < median(AlgForest$Fire[ind.region.B.month.8])) /length(samples.median.e1)
-p.e1.B.9 <- sum(samples.median.e1 < median(AlgForest$Fire[ind.region.B.month.9])) /length(samples.median.e1)
-p.e1.S.6 <- sum(samples.median.e1 < median(AlgForest$Fire[ind.region.S.month.6])) /length(samples.median.e1)
-p.e1.S.7 <- sum(samples.median.e1 < median(AlgForest$Fire[ind.region.S.month.7])) /length(samples.median.e1)
-p.e1.S.8 <- sum(samples.median.e1 < median(AlgForest$Fire[ind.region.S.month.8])) /length(samples.median.e1)
-p.e1.S.9 <- sum(samples.median.e1 < median(AlgForest$Fire[ind.region.S.month.9])) /length(samples.median.e1)
-#--
-prob.matrix <- data.frame(B6=signif(c(p.d2.B.6,p.d3.B.6,p.e1.B.6),3),
-                          B7=signif(c(p.d2.B.7,p.d3.B.7,p.e1.B.7),3),
-                          B8=signif(c(p.d2.B.8,p.d3.B.8,p.e1.B.8),3),
-                          B9=signif(c(p.d2.B.9,p.d3.B.9,p.e1.B.9),3),
-                          S6=signif(c(p.d2.S.6,p.d3.S.6,p.e1.S.6),3),
-                          S7=signif(c(p.d2.S.7,p.d3.S.7,p.e1.S.7),3),
-                          S8=signif(c(p.d2.S.8,p.d3.S.8,p.e1.S.8),3),
-                          S9=signif(c(p.d2.S.9,p.d3.S.9,p.e1.S.9),3),
-                          row.names=c("model.d2", "model.d3", "model.e1"))
-prob.matrix
-                          
-                          
-
-# dic.d2 <- dic.samples(fit.d2, n.iter=1e3)
+dic.d2 <- dic.samples(fit.d2, n.iter=1e3)
 dic.d3 <- dic.samples(fit.d3, n.iter=1e3)
 dic.e1 <- dic.samples(fit.e1, n.iter=1e3)
-
-# dic.d2
+dic.d2
 dic.d3
 dic.e1
 
+
+# predict on new data
+results.e1.pr <- inv.logit(do.call(rbind.data.frame, results.e1)) %>% data.frame() 
+```
+
+```{r final}
+
 # probability of new data
-newdata <- data.frame(Region=c("S", "B"),
+newdata <- data.frame(region.month=c(8,4),
                       TempCels=c(26,24),
-                      RH=c(20,40),
+                      DMC=c(12,8),
                       Ws=c(13,15),
                       RainYest=c(0.0,0.5),
-                      DMC=c(12,8),
-                      month=c(10,10),
-                      region.month=c(8,4))
-newdata
+                      RH=c(20,40))
+
+
+logit(mu[i]) <- -(beta0[region.month[i]] + 
+                        beta1*TempCels[i] + 
+                        beta2*DMC[i] + 
+                        beta3*Ws[i] + 
+                        beta4*RainYest[i] +
+                        beta5*RH[i])
 
 # p11 <- 1/(1+ exp(-nu11) ) #inverse-logit
 # mu <- exp(results.d2$`beta0[1]`)
@@ -1041,6 +1033,8 @@ pr.result <- param.exp[8] +
     param.exp[13]*newdata$RH
 
 pr.result
+
+
 
 
 
