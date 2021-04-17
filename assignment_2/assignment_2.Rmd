@@ -16,6 +16,8 @@ library(ggplot2)
 library("ggpubr")
 library(ggcorrplot)
 library(gridExtra)
+library(tidyr)
+library(ggridges)
 ```
 
 ```{r 1.a(i)}
@@ -890,12 +892,70 @@ compute.replicates <- function(fit, iter, var.name, chains) {
 }
 ```
 
+```{r 2.e formula - replicates.tidy}
+replicates.tidy <- function(res){
+  df <- transpose(res) %>%
+  mutate(Region = AlgForest$Region,
+         month = AlgForest$month) %>%
+  relocate(Region, month) %>%
+  group_by(Region, month) %>%
+  summarise_all(sum)  %>% 
+  pivot_longer(cols=-c(Region, month), names_to="index", values_to="total.fires") %>%
+  mutate(region.month=paste(Region, month)) %>%
+  relocate(region.month)
+  
+  return(df)
+}
+```
 
 ```{r 2.e}
-res.d2 <- compute.replicates(fit=fit.d2, iter=1e4, var.name="Fire.rep", chains=5)
-res.d3 <- compute.replicates(fit=fit.d3, iter=1e4, var.name="Fire.rep", chains=5)
-res.e1 <- compute.replicates(fit=fit.e1, iter=1e4, var.name="Fire.rep", chains=5)
+res.d2 <- compute.replicates(fit=fit.d2, iter=1e1, var.name="Fire.rep", chains=5)
+res.d3 <- compute.replicates(fit=fit.d3, iter=1e1, var.name="Fire.rep", chains=5)
+res.e1 <- compute.replicates(fit=fit.e1, iter=1e1, var.name="Fire.rep", chains=5)
 
+fire.rm.oj <- AlgForest %>%
+  group_by(Region, month) %>%
+  summarise_at(vars(Fire),    
+               list(name=sum)) %>%
+  mutate(region.month=paste(Region, month)) %>%
+  relocate(region.month)
+
+fire.rm.d2 <- replicates.tidy(res=res.d2)
+fire.rm.d3 <- replicates.tidy(res=res.d3)
+fire.rm.e1 <- replicates.tidy(res=res.e1)
+
+
+fire.rm.d2 %>% ggplot(aes(x=total.fires, y=as.factor(region.month), fill=Region)) +
+  geom_density_ridges() +
+  geom_segment(data=fire.rm.oj,
+               aes(x=name, xend=name,
+                   y=as.numeric(as.factor(region.month)),
+                   yend=as.numeric(as.factor(region.month))+1.5),
+             color = "red", inherit.aes = F)
+
+# geom_density_ridges
+```
+
+```{r}
+iris_lines <- data.frame(Species = c("setosa", "versicolor", "virginica"),
+                         x0 = c(5, 5.9, 6.5))
+
+Figure1 <- ggplot(iris, aes(x=Sepal.Length, y=Species, fill=(..quantile..))) +
+      geom_density_ridges_gradient(jittered_points = FALSE, 
+                                   calc_ecdf = TRUE, 
+                                   quantile_lines = c(TRUE), 
+                                   quantiles =c(0.1,0.25,0.75,0.9),
+                                   scale=0.9, color='white') +
+      geom_segment(data = iris_lines, 
+                   aes(x = x0, xend = x0, 
+                       y = as.numeric(Species), yend = as.numeric(Species) + c(.9,.5,.5)),
+                   color = "red", inherit.aes = F) +   #### HERE ####
+      scale_y_discrete(expand = c(0.01, 0))
+Figure1
+```
+
+
+```{r final}
 samples.median.d2=apply(res.d2,MARGIN=1, FUN=median)
 samples.median.d3=apply(res.d3,MARGIN=1, FUN=median)
 samples.median.e1=apply(res.e1,MARGIN=1, FUN=median)
@@ -958,7 +1018,6 @@ dic.d3
 dic.e1
 
 # probability of new data
-
 newdata <- data.frame(Region=c("S", "B"),
                       TempCels=c(26,24),
                       RH=c(20,40),
@@ -982,6 +1041,8 @@ pr.result <- param.exp[8] +
     param.exp[13]*newdata$RH
 
 pr.result
+
+
 
 #last => find the gamma prior that has variance 20-7=13 and mean (12+10)/2=11
 ```
