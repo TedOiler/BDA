@@ -21,13 +21,10 @@ library(ggridges)
 ```
 
 ```{r 1.a(i)}
-set.seed(1903)
 load(file='./earthScot.RData')
 earthQ <- data.table(earthQ)
 earthQ <- earthQ %>%
-  mutate_at(vars(eartrUK, MLrUK, `nrUK>4.5`), ~scale(., center=T, scale=F))
-
-iris %>% mutate_at(vars(Sepal.Length), log)
+  mutate(MLrUK=MLrUK-mean(MLrUK))
 
 # EDA
 numcols <- sapply(earthQ, is.numeric) 
@@ -161,11 +158,13 @@ model.s <- "model{
 
 
 ```{r 1.b(i)}
-inits.s <- list(list(lambda=rnorm(1,mean=0,sd=1)),
-                list(lambda=rnorm(1,mean=0,sd=1)),
-                list(lambda=rnorm(1,mean=0,sd=1)),
-                list(lambda=rnorm(1,mean=0,sd=1)),
-                list(lambda=rnorm(1,mean=0,sd=1)))
+load(file='./earthScot.RData')
+earthQ <- data.table(earthQ)
+# inits.s <- list(list(lambda=rnorm(1,mean=0,sd=1)),
+#                 list(lambda=rnorm(1,mean=0,sd=1)),
+#                 list(lambda=rnorm(1,mean=0,sd=1)),
+#                 list(lambda=rnorm(1,mean=0,sd=1)),
+#                 list(lambda=rnorm(1,mean=0,sd=1)))
 
 b1.data <- list(n=length(earthQ$eartrUK),
                eartScot=earthQ$eartScot,
@@ -173,13 +172,13 @@ b1.data <- list(n=length(earthQ$eartrUK),
                a=0.01,
                b=0.01)
 
-b1 <- b.fit.transform(inits=inits.s,
-                      data=b1.data,
+b1 <- b.fit.transform(data=b1.data,
                       model=model.s,
                       chains=5,
                       burnin=7000,
                       var.names=c("lambda"),
                       total=1e4)
+
 fit.b1     <- b1[[1]]
 results.b1 <- b1[[2]]
 gelman.b1  <- b1[[3]]
@@ -196,8 +195,7 @@ b2.data <- list(n=length(earthQ$eartrUK),
                a=16,
                b=20)
 
-b2 <- b.fit.transform(inits=inits.s,
-                      data=b2.data,
+b2 <- b.fit.transform(data=b2.data,
                       model=model.s,
                       chains=5,
                       burnin=7000,
@@ -207,7 +205,7 @@ fit.b2     <- b2[[1]]
 results.b2 <- b2[[2]]
 gelman.b2  <- b2[[3]]
 neff.b2    <- b2[[4]]
-summary(results.b1)
+summary(results.b2)
 gelman.b2
 neff.b2
 ```
@@ -233,21 +231,21 @@ model.h <- "model{
 ```
 
 ```{r 1.b(iii)}
-inits.h <- list(list(lambda=rnorm(1,mean=0,sd=1),
-                     a.0=rnorm(1,mean=0,sd=1),
-                     b.0=rnorm(1,mean=0,sd=1)),
-                list(lambda=rnorm(1,mean=0,sd=1),
-                     a.0=rnorm(1,mean=0,sd=1),
-                     b.0=rnorm(1,mean=0,sd=1)),
-                list(lambda=rnorm(1,mean=0,sd=1),
-                     a.0=rnorm(1,mean=0,sd=1),
-                     b.0=rnorm(1,mean=0,sd=1)),
-                list(lambda=rnorm(1,mean=0,sd=1),
-                     a.0=rnorm(1,mean=0,sd=1),
-                     b.0=rnorm(1,mean=0,sd=1)),
-                list(lambda=rnorm(1,mean=0,sd=1),
-                     a.0=rnorm(1,mean=0,sd=1),
-                     b.0=rnorm(1,mean=0,sd=1)))
+# inits.h <- list(list(lambda=rnorm(1,mean=0,sd=1),
+#                      a.0=rnorm(1,mean=0,sd=1),
+#                      b.0=rnorm(1,mean=0,sd=1)),
+#                 list(lambda=rnorm(1,mean=0,sd=1),
+#                      a.0=rnorm(1,mean=0,sd=1),
+#                      b.0=rnorm(1,mean=0,sd=1)),
+#                 list(lambda=rnorm(1,mean=0,sd=1),
+#                      a.0=rnorm(1,mean=0,sd=1),
+#                      b.0=rnorm(1,mean=0,sd=1)),
+#                 list(lambda=rnorm(1,mean=0,sd=1),
+#                      a.0=rnorm(1,mean=0,sd=1),
+#                      b.0=rnorm(1,mean=0,sd=1)),
+#                 list(lambda=rnorm(1,mean=0,sd=1),
+#                      a.0=rnorm(1,mean=0,sd=1),
+#                      b.0=rnorm(1,mean=0,sd=1)))
 
 b3.data <- list(n=length(earthQ$eartrUK),
                eartScot=earthQ$eartScot,
@@ -256,8 +254,7 @@ b3.data <- list(n=length(earthQ$eartrUK),
                b=4,
                tau=log(1.64))
 
-b3 <- b.fit.transform(inits=inits,
-                      data=b3.data,
+b3 <- b.fit.transform(data=b3.data,
                       model=model.h,
                       chains=5,
                       burnin=7000,
@@ -288,18 +285,17 @@ model.c1 <- "model{
 ```
 
 ```{r 1.c}
-inits.c1 <- list(list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1)),
-                 list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1)),
-                 list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1)),
-                 list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1)),
-                 list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1)))
+# inits.c1 <- list(list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1)),
+#                  list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1)),
+#                  list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1)),
+#                  list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1)),
+#                  list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1)))
 
 c1.data <- list(n=length(earthQ$eartrUK),
                eartScot=earthQ$eartScot,
                dist =earthQ$dist)
 
-c1 <- b.fit.transform(inits=inits.c1,
-                      data=c1.data,
+c1 <- b.fit.transform(data=c1.data,
                       model=model.c1,
                       chains=5,
                       burnin=6000,
@@ -332,23 +328,22 @@ model.d1 <- "model{
 ```
 
 ```{r 1.d}
-inits.d1 <- list(list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
-                      sigma.delta=rnorm(1,mean=0,sd=1)),
-                 list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
-                      sigma.delta=rnorm(1,mean=0,sd=1)),
-                 list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
-                      sigma.delta=rnorm(1,mean=0,sd=1)),
-                 list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
-                      sigma.delta=rnorm(1,mean=0,sd=1)),
-                 list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
-                      sigma.delta=rnorm(1,mean=0,sd=1)))
+# inits.d1 <- list(list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
+#                       sigma.delta=rnorm(1,mean=0,sd=1)),
+#                  list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
+#                       sigma.delta=rnorm(1,mean=0,sd=1)),
+#                  list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
+#                       sigma.delta=rnorm(1,mean=0,sd=1)),
+#                  list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
+#                       sigma.delta=rnorm(1,mean=0,sd=1)),
+#                  list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
+#                       sigma.delta=rnorm(1,mean=0,sd=1)))
 
 d1.data <- list(n=length(earthQ$eartrUK),
                eartScot=earthQ$eartScot,
                dist=earthQ$dist)
 
-d1 <- b.fit.transform(inits=inits.d1,
-                      data=d1.data,
+d1 <- b.fit.transform(data=d1.data,
                       model=model.d1,
                       chains=5,
                       burnin=6000,
@@ -392,18 +387,17 @@ earthQ.imp <- earthQ %>%
 
 
 ```{r 1.e}
-inits.e1 <- list(list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1)),
-                 list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1)),
-                 list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1)),
-                 list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1)),
-                 list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1)))
+# inits.e1 <- list(list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1)),
+#                  list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1)),
+#                  list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1)),
+#                  list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1)),
+#                  list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1)))
 
 e1.data <- list(n=length(earthQ.imp$eartrUK),
                eartScot=earthQ.imp$eartScot,
                nrUK =earthQ.imp$`nrUK>4.5`)
 
-e1 <- b.fit.transform(inits=inits.e1,
-                      data=e1.data,
+e1 <- b.fit.transform(data=e1.data,
                       model=model.e1,
                       chains=5,
                       burnin=6000,
@@ -434,16 +428,6 @@ model.e2 <- "model{
   }"
 ```
 
-```{r test}
-# x <- seq(0, 5, length.out=1000)
-# cv = 0.4
-# cv^(-2)
-# 
-# dat <- data.frame(x=x, px=dgamma(x, shape = cv^(-2), rate = cv^(-2)-1))
-# ggplot(dat, aes(x=x, y=px)) + geom_line()
-```
-
-
 ```{r 1.e2}
 e2.data <- list(n=length(earthQ.imp$eartrUK),
                eartScot=earthQ.imp$eartScot,
@@ -451,8 +435,7 @@ e2.data <- list(n=length(earthQ.imp$eartrUK),
                a.nrUK=6.25,
                b.nrUK=5.25) # a and b chosen for mean 1 and CV 0.4
 
-e2 <- b.fit.transform(inits=inits.e1,
-                      data=e2.data,
+e2 <- b.fit.transform(data=e2.data,
                       model=model.e2,
                       chains=5,
                       burnin=6000,
@@ -481,11 +464,10 @@ e2.params %>%
   geom_density(aes(beta1), fill="blue4", colour="blue4", alpha=0.6) +
   geom_density(aes(beta.prior), fill="green4", colour="green4", alpha=0.6) +
   theme(axis.title.x = element_blank()) + 
-  ggtitle(expression(paste("Posterior Densities of ", beta_0," and ", beta_1))) +
+  ggtitle(expression(paste("Posterior Densities of ", beta_0," and ", beta_1)))
   #geom_text(aes(label=c("1","2","3")))
 
 # round(e2.estimates[1] + e2.estimates[2]*earthQ.imp$`nrUK>4.5`,0) # Earthquakes according to model e2
-set.seed(2)
 mu.post.e2 <- e2.estimates[1] + e2.estimates[2]*earthQ.imp$`nrUK>4.5`
 ynew.e2 <- as.data.frame(rpois(12, mu.post.e2))
 # y.e2 %>% mutate(ynew.e2=ynew.e2+rep(1,12))
@@ -515,7 +497,11 @@ earthQ %>%
 AlgForest <- read.csv('./AlgForest.csv')
 AlgForest <- data.table(AlgForest) 
 AlgForest <- AlgForest %>%
-  mutate_at(vars(TempCels, RH, Ws, DMC, RainYest), ~scale(., center=T, scale=T))
+  mutate(TempCels=c(TempCels-mean(TempCels)),
+         RH=c(RH-mean(RH)),
+         Ws=c(Ws-mean(Ws)),
+         DMC=c(DMC-mean(DMC)),
+         RainYest=c(RainYest-mean(RainYest)))
 
 AlgForest <- AlgForest %>%
   mutate(Fire = as.factor(Fire))
@@ -610,16 +596,6 @@ model.c2 <- "model{
 ```{r 2.c}
 AlgForest <- AlgForest %>% mutate(Fire=as.numeric(Fire)-1)
 
-inits.d1 <- list(list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
-                      beta2=rnorm(1,mean=0,sd=1),beta3=rnorm(1,mean=0,sd=1),
-                      beta4=rnorm(1,mean=0,sd=1)),
-                 list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
-                      beta2=rnorm(1,mean=0,sd=1),beta3=rnorm(1,mean=0,sd=1),
-                      beta4=rnorm(1,mean=0,sd=1)),
-                 list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
-                      beta2=rnorm(1,mean=0,sd=1),beta3=rnorm(1,mean=0,sd=1),
-                      beta4=rnorm(1,mean=0,sd=1)))
-
 c2.data <- list(n=length(AlgForest$Fire),
                Fire=AlgForest$Fire,
                TempCels=AlgForest$TempCels,
@@ -627,14 +603,35 @@ c2.data <- list(n=length(AlgForest$Fire),
                Ws=AlgForest$Ws,
                RainYest=AlgForest$RainYest)
 
-c2 <- b.fit.transform(inits=inits.d1,
-                      data=c2.data,
-                      model=model.c2,
-                      chains=3,
-                      burnin=2000,
-                      var.names=c("beta0", "beta1", "beta2", "beta3", "beta4"),
-                      total=5e4,
-                      thin=100)
+
+boolFalse <- F
+while(boolFalse==F){
+  tryCatch({
+    inits.c2 <- list(list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
+                          beta2=rnorm(1,mean=0,sd=1),beta3=rnorm(1,mean=0,sd=1),
+                          beta4=rnorm(1,mean=0,sd=1)),
+                     list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
+                          beta2=rnorm(1,mean=0,sd=1),beta3=rnorm(1,mean=0,sd=1),
+                          beta4=rnorm(1,mean=0,sd=1)),
+                     list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
+                          beta2=rnorm(1,mean=0,sd=1),beta3=rnorm(1,mean=0,sd=1),
+                          beta4=rnorm(1,mean=0,sd=1)))
+    
+    c2 <- b.fit.transform(inits=inits.c2,
+                          data=c2.data,
+                          model=model.c2,
+                          chains=3,
+                          burnin=2000,
+                          var.names=c("beta0", "beta1", "beta2", "beta3", "beta4"),
+                          total=5e4,
+                          thin=100)
+    
+    boolFalse <- T
+  },error=function(e){
+    cat("Resetting initial values and rebuilding model")
+  })
+}
+
 fit.c2     <- c2[[1]]
 results.c2 <- c2[[2]]
 gelman.c2  <- c2[[3]]
@@ -881,25 +878,24 @@ d3.data <- list(n=length(AlgForest.region.month$Fire),
 boolFalse <- F
 while(boolFalse==F){
   tryCatch({
-    inits.d3 <- list(
-      list(beta0=rnorm(8,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
-           beta2=rnorm(1,mean=0,sd=1),beta3=rnorm(1,mean=0,sd=1),
-           beta4=rnorm(1,mean=0,sd=1),omega=rnorm(8,mean=0,sd=1)),
-      list(beta0=rnorm(8,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
-           beta2=rnorm(1,mean=0,sd=1),beta3=rnorm(1,mean=0,sd=1),
-           beta4=rnorm(1,mean=0,sd=1),omega=rnorm(8,mean=0,sd=1)),
-      list(beta0=rnorm(8,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
-           beta2=rnorm(1,mean=0,sd=1),beta3=rnorm(1,mean=0,sd=1),
-           beta4=rnorm(1,mean=0,sd=1),omega=rnorm(8,mean=0,sd=1)),
-      list(beta0=rnorm(8,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
-           beta2=rnorm(1,mean=0,sd=1),beta3=rnorm(1,mean=0,sd=1),
-           beta4=rnorm(1,mean=0,sd=1),omega=rnorm(8,mean=0,sd=1)),
-      list(beta0=rnorm(8,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
-           beta2=rnorm(1,mean=0,sd=1),beta3=rnorm(1,mean=0,sd=1),
-           beta4=rnorm(1,mean=0,sd=1),omega=rnorm(8,mean=0,sd=1)))
+    # inits.d3 <- list(
+    #   list(beta0=rnorm(8,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
+    #        beta2=rnorm(1,mean=0,sd=1),beta3=rnorm(1,mean=0,sd=1),
+    #        beta4=rnorm(1,mean=0,sd=1),omega=rnorm(8,mean=0,sd=1)),
+    #   list(beta0=rnorm(8,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
+    #        beta2=rnorm(1,mean=0,sd=1),beta3=rnorm(1,mean=0,sd=1),
+    #        beta4=rnorm(1,mean=0,sd=1),omega=rnorm(8,mean=0,sd=1)),
+    #   list(beta0=rnorm(8,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
+    #        beta2=rnorm(1,mean=0,sd=1),beta3=rnorm(1,mean=0,sd=1),
+    #        beta4=rnorm(1,mean=0,sd=1),omega=rnorm(8,mean=0,sd=1)),
+    #   list(beta0=rnorm(8,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
+    #        beta2=rnorm(1,mean=0,sd=1),beta3=rnorm(1,mean=0,sd=1),
+    #        beta4=rnorm(1,mean=0,sd=1),omega=rnorm(8,mean=0,sd=1)),
+    #   list(beta0=rnorm(8,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
+    #        beta2=rnorm(1,mean=0,sd=1),beta3=rnorm(1,mean=0,sd=1),
+    #        beta4=rnorm(1,mean=0,sd=1),omega=rnorm(8,mean=0,sd=1)))
     
-    d3 <- b.fit.transform(inits=inits.d3,
-                          data=d3.data,
+    d3 <- b.fit.transform(data=d3.data,
                           model=model.d3,
                           chains=5,
                           burnin=2000,
@@ -953,9 +949,7 @@ results.d1.df %>%
   ggplot() +
   geom_density(aes(x=inv.logit(beta0.1.)), fill="red4"  , color="red4"  , alpha=0.5) +
   geom_density(aes(x=inv.logit(beta0.2.)), fill="green4", color="green4", alpha=0.5)
-  
 
-results.d2
 # ii
 results.d2.df <- data.frame(results.d2[[1]])
 prob.d2.B.78 <- round(mean(inv.logit(results.d2.df$beta0.1.)),3)
