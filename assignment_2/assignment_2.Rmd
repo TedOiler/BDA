@@ -810,45 +810,43 @@ neff.d3
 ```
 
 ```{r 2.d(iii) INLA model}
-# model.d3 <- "model{
-#   # Likelihood
-#   for(i in 1:n) {
-#       Fire.rep[i] ~ dbern(mu[i])
-#       Fire[i] ~ dbern(mu[i])
-#       logit(mu[i]) <- -(beta0[region.month[i]] + 
-#                         beta1*TempCels[i] + 
-#                         beta2*RH[i] + 
-#                         beta3*Ws[i] + 
-#                         beta4*RainYest[i])
-#   }
-#   
-#   # priors for independent intercepts per county
-#   for(j in 1:J){
-#     beta0[j] ~ dnorm(0, omega)
-#   }
-#   # prior
-#   omega ~ dgamma(0.01,0.01)
-#   beta1 ~ dnorm(0,1/100)
-#   beta2 ~ dnorm(0,1/100)
-#   beta3 ~ dnorm(0,1/100)
-#   beta4 ~ dnorm(0,1/100)
-# }"
-# 
-# prior.omega <- list(mean.intercept = 0, prec.intercept = 1/(20^2))
-# prior.beta1 <- list(mean.intercept = 0, prec.intercept = 1/(10^2))
-# prior.beta2 <- list(mean.intercept = 0, prec.intercept = 1/(10^2))
-# prior.beta3 <- list(mean.intercept = 0, prec.intercept = 1/(10^2))
-# prior.beta4 <- list(mean.intercept = 0, prec.intercept = 1/(10^2))
-# 
-# results.d3.inla=inla(Fire~region.month+TempCels+RH+Ws+RainYest,
-#                      data=AlgForest.region.month,
-#                      family="bernoulli",
-#                      control.family=list(link="logit"),
-#                      control.fixed=prior.beta,
-#                      control.inla = list(strategy = "laplace", npoints = 40),
-#                      control.compute=list(config=TRUE,cpo=TRUE,dic=TRUE))
-# 
-# summary(results.d3.inla)
+model.d3 <- "model{
+  # Likelihood
+  for(i in 1:n) {
+      Fire.rep[i] ~ dbern(mu[i])
+      Fire[i] ~ dbern(mu[i])
+      logit(mu[i]) <- -(beta0[region.month[i]] +
+                        beta1*TempCels[i] +
+                        beta2*RH[i] +
+                        beta3*Ws[i] +
+                        beta4*RainYest[i])
+  }
+
+  # priors for independent intercepts per county
+  for(j in 1:J){
+    beta0[j] ~ dnorm(0, omega)
+  }
+  # prior
+  omega ~ dgamma(0.01,0.01)
+  beta1 ~ dnorm(0,1/100)
+  beta2 ~ dnorm(0,1/100)
+  beta3 ~ dnorm(0,1/100)
+  beta4 ~ dnorm(0,1/100)
+}"
+
+prior.gamma <- list(prec=list(prior = "gamma", param = c(0.1, 0.1)))
+prior.beta <- list(mean.intercept = 0, prec.intercept = 1/(10^2))
+
+results.d3.inla=inla(Fire~region.month+TempCels+RH+Ws+RainYest,
+                     data=AlgForest.region.month,
+                     family="binomial",
+                     Ntrials=1,
+                     control.family=list(link="logit"),
+                     control.fixed=prior.beta,
+                     control.inla = list(strategy = "laplace", npoints = 40),
+                     control.compute=list(config=TRUE,cpo=TRUE,dic=TRUE))
+
+summary(results.d3.inla)
 
 ```
 
@@ -907,7 +905,7 @@ d3.4 <- results.d3.df %>%
   geom_density(aes(x=inv.logit(beta0.8.)), fill="green4", color="green4", alpha=0.5) +
   labs(title="Sepember", x=NULL, y=NULL)
 
-ggarrange(d3.1, d3.2, d3.3, d3.4, ncol=2, nrow=2) %>%
+ggarrange(d3.1, d3.2, d3.3, d3.4, ncol=2, nrow=2, common.legend=TRUE) %>%
   annotate_figure(top=text_grob("Fires per region per month"))
 
 ```
