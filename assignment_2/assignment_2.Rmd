@@ -618,12 +618,6 @@ inits.d1 <- list(list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
                       beta4=rnorm(1,mean=0,sd=1)),
                  list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
                       beta2=rnorm(1,mean=0,sd=1),beta3=rnorm(1,mean=0,sd=1),
-                      beta4=rnorm(1,mean=0,sd=1)),
-                 list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
-                      beta2=rnorm(1,mean=0,sd=1),beta3=rnorm(1,mean=0,sd=1),
-                      beta4=rnorm(1,mean=0,sd=1)),
-                 list(beta0=rnorm(1,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
-                      beta2=rnorm(1,mean=0,sd=1),beta3=rnorm(1,mean=0,sd=1),
                       beta4=rnorm(1,mean=0,sd=1)))
 
 c2.data <- list(n=length(AlgForest$Fire),
@@ -791,7 +785,6 @@ d2.data <- list(n=length(AlgForest.month$Fire),
                J=2,
                K=4)
 
-
 boolFalse <- F
 while(boolFalse==F){
   tryCatch({
@@ -885,17 +878,45 @@ d3.data <- list(n=length(AlgForest.region.month$Fire),
                region.month=AlgForest.region.month$region.month,
                J=max(AlgForest.region.month$region.month))
 
-d3 <- b.fit.transform(data=d3.data,
-                      model=model.d3,
-                      chains=5,
-                      burnin=2000,
-                      var.names=c("omega[1]","omega[2]","omega[3]","omega[4]",
-                                  "omega[5]","omega[6]","omega[7]","omega[8]",
-                                  "beta0[1]","beta0[2]","beta0[3]","beta0[4]",
-                                  "beta0[5]","beta0[6]","beta0[7]","beta0[8]",
-                                  "beta1","beta2","beta3","beta4"),
-                      total=5e4,
-                      thin=100)
+boolFalse <- F
+while(boolFalse==F){
+  tryCatch({
+    inits.d3 <- list(
+      list(beta0=rnorm(8,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
+           beta2=rnorm(1,mean=0,sd=1),beta3=rnorm(1,mean=0,sd=1),
+           beta4=rnorm(1,mean=0,sd=1),omega=rnorm(8,mean=0,sd=1)),
+      list(beta0=rnorm(8,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
+           beta2=rnorm(1,mean=0,sd=1),beta3=rnorm(1,mean=0,sd=1),
+           beta4=rnorm(1,mean=0,sd=1),omega=rnorm(8,mean=0,sd=1)),
+      list(beta0=rnorm(8,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
+           beta2=rnorm(1,mean=0,sd=1),beta3=rnorm(1,mean=0,sd=1),
+           beta4=rnorm(1,mean=0,sd=1),omega=rnorm(8,mean=0,sd=1)),
+      list(beta0=rnorm(8,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
+           beta2=rnorm(1,mean=0,sd=1),beta3=rnorm(1,mean=0,sd=1),
+           beta4=rnorm(1,mean=0,sd=1),omega=rnorm(8,mean=0,sd=1)),
+      list(beta0=rnorm(8,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
+           beta2=rnorm(1,mean=0,sd=1),beta3=rnorm(1,mean=0,sd=1),
+           beta4=rnorm(1,mean=0,sd=1),omega=rnorm(8,mean=0,sd=1)))
+    
+    d3 <- b.fit.transform(inits=inits.d3,
+                          data=d3.data,
+                          model=model.d3,
+                          chains=5,
+                          burnin=2000,
+                          var.names=c("omega[1]","omega[2]","omega[3]","omega[4]",
+                                      "omega[5]","omega[6]","omega[7]","omega[8]",
+                                      "beta0[1]","beta0[2]","beta0[3]","beta0[4]",
+                                      "beta0[5]","beta0[6]","beta0[7]","beta0[8]",
+                                      "beta1","beta2","beta3","beta4"),
+                          total=5e4,
+                          thin=100)
+    
+    boolFalse <- T
+  },error=function(e){
+    cat("Resetting initial values and rebuilding model")
+  })
+}
+
 fit.d3     <- d3[[1]]
 results.d3 <- d3[[2]]
 gelman.d3  <- d3[[3]]
@@ -905,56 +926,7 @@ gelman.d3
 neff.d3
 ```
 
-```{r}
-# warts.ident.model <- "model{
-# #likelihood
-#   for(i in 1:n){
-#     warts[i] ~ dbinom(p, consults[i])
-#     warts.pred[i] ~ dbinom(p, consults[i])
-#   }
-# # prior for the probability
-#   logit(p) <- beta0
-#   beta0 ~ dnorm(0, 0.0025)
-#  }"
-# 
-# prior.beta <- list(mean.intercept = 0, prec.intercept = 1/(20^2))
-# m.warts.identical=inla(warts~1,data=wartpid.data,family="binomial",
-#                        control.family=list(link="logit"),
-#                        Ntrials=consults,
-#                        control.fixed=prior.beta,
-#                        control.compute=list(config=TRUE,cpo=TRUE,dic=TRUE))
-# #Including control.compute=list(config=TRUE,cpo=TRUE,dic=TRUE
-# #allows for posterior sampling, and computes CPO and DIC values
-# 
-# summary(m.warts.identical)
-```
-
 ```{r 2.d(iii) INLA model}
-model.d3 <- "model{
-  # Likelihood
-  for(i in 1:n) {
-      Fire.rep[i] ~ dbern(mu[i])
-      Fire[i] ~ dbern(mu[i])
-      logit(mu[i]) <- -(beta0[region.month[i]] + 
-                        beta1*TempCels[i] + 
-                        beta2*RH[i] + 
-                        beta3*Ws[i] + 
-                        beta4*RainYest[i]) +
-                        omega[region.month[i]]
-  }
-  
-  # priors for independent intercepts per county
-  for(j in 1:J){
-    beta0[j] ~ dnorm(0, 1/0.1)
-    omega[j] ~ dgamma(0.01,0.01)
-  }
-  # prior
-  beta1 ~ dnorm(0,1/100)
-  beta2 ~ dnorm(0,1/100)
-  beta3 ~ dnorm(0,1/100)
-  beta4 ~ dnorm(0,1/100)
-}"
-
 prior.gamma <- list(prec=list(prior = "gamma", param = c(0.1, 0.1)))
 prior.beta <- list(mean.intercept = 0, prec.intercept = 1/(10^2))
 
@@ -1077,14 +1049,42 @@ e1.data <- list(n=length(AlgForest.region.month$Fire),
                region.month=AlgForest.region.month$region.month,
                J=max(AlgForest.region.month$region.month))
 
-e1 <- b.fit.transform(data=e1.data,
-                      model=model.e1,
-                      chains=5,
-                      burnin=7000,
-                      var.names=c("omega","beta1","beta2","beta3","beta4","beta5",
-                                            "beta0[1]","beta0[2]","beta0[3]","beta0[4]",
-                                            "beta0[5]","beta0[6]","beta0[7]","beta0[8]"),
-                      total=1e4)
+boolFalse <- F
+while(boolFalse==F){
+  tryCatch({
+    inits.e1 <- list(
+      list(beta0=rnorm(8,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
+           beta2=rnorm(1,mean=0,sd=1),beta3=rnorm(1,mean=0,sd=1),
+           beta4=rnorm(1,mean=0,sd=1),beta5=rnorm(1,mean=0,sd=1),omega=rnorm(1,mean=0,sd=1)),
+      list(beta0=rnorm(8,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
+           beta2=rnorm(1,mean=0,sd=1),beta3=rnorm(1,mean=0,sd=1),
+           beta4=rnorm(1,mean=0,sd=1),beta5=rnorm(1,mean=0,sd=1),omega=rnorm(1,mean=0,sd=1)),
+      list(beta0=rnorm(8,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
+           beta2=rnorm(1,mean=0,sd=1),beta3=rnorm(1,mean=0,sd=1),
+           beta4=rnorm(1,mean=0,sd=1),beta5=rnorm(1,mean=0,sd=1),omega=rnorm(1,mean=0,sd=1)),
+      list(beta0=rnorm(8,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
+           beta2=rnorm(1,mean=0,sd=1),beta3=rnorm(1,mean=0,sd=1),
+           beta4=rnorm(1,mean=0,sd=1),beta5=rnorm(1,mean=0,sd=1),omega=rnorm(1,mean=0,sd=1)),
+      list(beta0=rnorm(8,mean=0,sd=1),beta1=rnorm(1,mean=0,sd=1),
+           beta2=rnorm(1,mean=0,sd=1),beta3=rnorm(1,mean=0,sd=1),
+           beta4=rnorm(1,mean=0,sd=1),beta5=rnorm(1,mean=0,sd=1),omega=rnorm(1,mean=0,sd=1)))
+    
+    e1 <- b.fit.transform(inits=inits.e1,
+                          data=e1.data,
+                          model=model.e1,
+                          chains=5,
+                          burnin=7000,
+                          var.names=c("omega","beta1","beta2","beta3","beta4","beta5",
+                                      "beta0[1]","beta0[2]","beta0[3]","beta0[4]",
+                                      "beta0[5]","beta0[6]","beta0[7]","beta0[8]"),
+                          total=5e4)
+    
+    boolFalse <- T
+  },error=function(e){
+    cat("Resetting initial values and rebuilding model")
+  })
+}
+
 fit.e1     <- e1[[1]]
 results.e1 <- e1[[2]]
 gelman.e1  <- e1[[3]]
