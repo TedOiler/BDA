@@ -3,6 +3,8 @@ title: "Assignment2"
 author: "Ted Ladas - s2124289"
 date: "30/03/2021"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -29,7 +31,7 @@ earthQ <- earthQ %>%
 # EDA
 numcols <- sapply(earthQ, is.numeric) 
 cor.earthQ <- cor(earthQ, use="pairwise.complete")
-ggcorrplot(cor.earthQ,
+p1.1 <- ggcorrplot(cor.earthQ,
            hc.order=TRUE,
            type="lower",
            lab=TRUE)
@@ -37,7 +39,7 @@ ggcorrplot(cor.earthQ,
 plot <- earthQ %>% 
   filter(!is.na(`nrUK>4.5`))
 
-plot %>%
+p1.2 <- plot %>%
   ggplot(aes(dist, eartScot,
              size=MLrUK,
              color=`nrUK>4.5`)) +
@@ -46,7 +48,7 @@ plot %>%
               formula='y~x',
               se=FALSE)
 
-plot %>%
+p1.3 <- plot %>%
   ggplot(aes(decade, eartScot,
              size=MLrUK,
              color=`nrUK>4.5`)) +
@@ -55,7 +57,7 @@ plot %>%
               formula='y~x',
               se=FALSE)
 
-plot %>%
+p1.4 <- plot %>%
   ggplot(., aes(eartrUK, eartScot,
                 size=MLrUK,
                 color=`nrUK>4.5`)) +
@@ -63,6 +65,9 @@ plot %>%
   geom_smooth(method="glm",
               formula='y~x',
               se=FALSE)
+
+ggarrange(p1.1, p1.2, p1.3, p1.4, ncol=2, nrow=2, common.legend=TRUE) %>%
+  annotate_figure(top=text_grob("Exploratory Data Analysis"))
 
 ```
 
@@ -184,6 +189,7 @@ results.b1 <- b1[[2]]
 gelman.b1  <- b1[[3]]
 neff.b1    <- b1[[4]]
 summary(results.b1)
+results.b1
 gelman.b1
 neff.b1
 ```
@@ -510,30 +516,22 @@ AlgForest <- AlgForest %>%
 p1 <- AlgForest %>%
   ggplot(aes(x=TempCels, y=Fire)) +
   geom_point(aes(color=Region), size=2) +
-  geom_smooth(method=lm,
-              formula='y~x',
-              se=FALSE)
+  geom_smooth(se=FALSE)
 
 p2 <- AlgForest %>%
   ggplot(aes(x=RH, y=Fire)) +
   geom_point(aes(color=Region), size=2) +
-  geom_smooth(method=lm,
-              formula='y~x',
-              se=FALSE)
+  geom_smooth(se=FALSE)
 
 p3 <- AlgForest %>%
   ggplot(aes(x=Ws, y=Fire)) +
   geom_point(aes(color=Region), size=2) +
-  geom_smooth(method=lm,
-              formula='y~x',
-              se=FALSE)
+  geom_smooth(se=FALSE)
 
 p4 <- AlgForest %>%
   ggplot(aes(x=RainYest, y=Fire)) +
   geom_point(aes(color=Region), size=2) +
-  geom_smooth(method=lm,
-              formula='y~x',
-              se=FALSE)
+  geom_smooth(se=FALSE)
 
 ggarrange(p1, p2, p3, p4, ncol=2, nrow=2)
 
@@ -845,13 +843,14 @@ model.d3 <- "model{
   # priors for independent intercepts per county
   for(j in 1:J){
     beta0[j] ~ dnorm(0, 1/0.1)
-    omega[j] ~ dgamma(0.01,0.01)
+    omega[j] ~ dnorm(0, 1/omega.sigma2)
   }
   # prior
   beta1 ~ dnorm(0,1/100)
   beta2 ~ dnorm(0,1/100)
   beta3 ~ dnorm(0,1/100)
   beta4 ~ dnorm(0,1/100)
+  omega.sigma2 ~ dgamma(0.01,0.01)
 }"
 ```
 
@@ -899,11 +898,9 @@ while(boolFalse==F){
                           model=model.d3,
                           chains=5,
                           burnin=2000,
-                          var.names=c("omega[1]","omega[2]","omega[3]","omega[4]",
-                                      "omega[5]","omega[6]","omega[7]","omega[8]",
-                                      "beta0[1]","beta0[2]","beta0[3]","beta0[4]",
+                          var.names=c("beta0[1]","beta0[2]","beta0[3]","beta0[4]",
                                       "beta0[5]","beta0[6]","beta0[7]","beta0[8]",
-                                      "beta1","beta2","beta3","beta4"),
+                                      "beta1","beta2","beta3","beta4","omega.sigma2"),
                           total=5e4,
                           thin=100)
     
