@@ -8,6 +8,9 @@
 \usepackage{amssymb}
 \usepackage{hyperref}
 \usepackage{graphicx}
+\usepackage{pgf, tikz, amsmath, amsfonts}          
+\usetikzlibrary{arrows, automata, positioning}
+
 \begin{document}
 \title{Solutions to BDA Assignment 2,
  2020/2021 Semester 2}
@@ -87,7 +90,7 @@ Results: The way convergence was checked was through the trace plots, the Gelman
 
 These are the ways all the Markov chain Monte Carlo chains have beed checked for convergence in this assignment.
 
-The results are that 
+The results are that the expectation for $\log(\lambda)$ are $0.3821$, $0.5178$, and $0.3852$ respectively for the three models discribed above. The two candidate models are model 1 and model 3, since these have more defused priors, therefore the explore more options. Also, model 3 is more flexible due to it's hierarchical nature, therefore model 3 is the model of choice.
 
 
 \item
@@ -96,44 +99,312 @@ Explanation:
 Results:
 
 \item
-Explanation:
+The DAG for this model is:
 
-Results:
+\begin{tikzpicture}[
+      > = stealth,                 % arrow head style
+      shorten > = 1pt,             % don't touch arrow head to node
+      auto, node distance = 1.3cm, % distance between nodes
+      semithick                    % thicker arrows
+    ]
+    
+    \tikzstyle{S1}=[      % Defines style for Square 
+      fill = black!15,    % Black with transparency 15%
+      minimum size = 8mm  
+    ]
+    
+    \tikzstyle{R1}=[      % Defines style for Round 
+      circle,             % Changes shape
+      fill = black!15,
+      minimum size = 8mm
+    ]
+    
+    % DO NOT FORGET ; AT THE END OF EACH SENTENCE!!!
+    
+    % Definition of the nodes
+    % \node[style] (name) [relative_position] {Text};
+    % Relative positions: left, right, above, below, above left, etc.
+    \node[S1] (y) {$y_{i}$};
+    \node[R1] (lambda) [above of=y] {$\lambda_{i}$};
+    \node[R1] (beta1) [above of=lambda] {$\beta_1$};
+    \node[R1] (beta0) [left of=beta1] {$\beta_0$};
+    \node[S1] (x) [right of=beta1] {$x_i$};
+    \node[R1] (delta) [right of=x] {$\delta_i$};
+    \node[R1] (sigma) [above of=delta] {$\sigma^2$};
+    \node[R1] (tau) [right of=sigma] {$\tau$};
+
+    % Definition of the edges
+    \path[->] (lambda) edge node {} (y);
+    \path[->,dashed] (beta0) edge node {} (lambda);
+    \path[->,dashed] (beta1) edge node {} (lambda);
+    \path[->,dashed] (delta) edge node {} (lambda);
+    \path[->,dashed] (x) edge node {} (lambda);
+    
+    \path[->,dashed] (sigma) edge node {} (delta);
+    \path[->] (tau) edge node {} (sigma);
+    
+
+  \end{tikzpicture}
+  
+In addition to defining the DAG, the model is also built and fitted in the submitted code.
 
 \item
-Explanation:
+Explanation: Lastly, a model where the earthquakes on Scotland were dependent on the variable $nrUK4.5$ was considered. However, this covariate had missing values. Since the dataset is only 12 datapoints, it is critical to not throw away these potentially valuable datapoints. Instead we can impute the missing values. The way the imputation was performed was via stochastic regression imputation. Essentially, $MLrUK$ was used as an auxiliery variable in the glm model: 
 
-Results:
+$$\log(\widehat{nrUK4.5})=\widehat{\beta_0}+\widehat{\beta_1}MLrUK$$
+
+After the model was trained, the predictions were created and inserted into the dataset via the predict function.
+
+A second approach into imputing the missing values, was to perform the imputation through JAGS. The model chosen to do this was: 
+
+\begin{verbatim}
+model.e2 <- "model{
+ # prior
+  beta0 ~ dnorm(0,1/5)
+  beta1 ~ dnorm(0,1/5)
+  
+ # Likelihood
+  for(i in 1:n) {
+      nrUK[i]  ~ dgamma(a.nrUK, b.nrUK)
+      log(mu[i]) <- beta0+beta1*(nrUK[i]-mean(nrUK[]))
+      eartScot[i] ~ dpois(mu[i])
+    } 
+  }"
+\end{verbatim}
+
+In this model, $nrUK$ is being treaded as a stochastic node that is originated from a gamma distribution. The gamma distribution was chosen, since an only positive and heavily skewed to the left distribution makes sense. The average of the column $nrUK$ when the missing values are removed is around $1$, therefore the $\alpha$ and $\beta$ of the Gamma distribution where chosen to be: $\alpha=6.25$ and $\beta=5.25$, which means that the Gamma distribution has a median value of $1$ and a covariate of variation (or CV) of 0.4. 
 
 \end{enumerate}
 
 \noindent\textbf{2)}
 \begin{enumerate}[(a)]
-\item
-Explanation:
-
-Results:
 
 \item
-Explanation:
+Explanation: In this section, the probability of wildefire in the forests of two Algerian regions: the Bejaia region, located in the Northest of Algeria and the Sidi Bel-abbes region, in the Northwest, are being modeled. In this part an exploratory data analysis is being performed.
 
-Results:
+Results: In \autoref{EDA2}, we see the four important meteorological variables versus the existance or not of Fire. The lines have been automatically drawn by \textsf{R}, in order to understand the relationship of each covariate to the dependent variable. For example, we see what we expect in the Temperature variable, since as the temperature rises, the probability of fire rises as well. While these lines don't exactly respresent probabilities, there shape is important to gain insight.
+
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.6\linewidth]{figures/Rplot07.pdf}
+    \caption{EDA}
+    \label{EDA2}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.6\linewidth]{figures/Rplot08.pdf}
+    \caption{Box and Wiskers plots}
+    \label{boxplots}
+\end{figure}
+
+Secondly, in \autoref{boxplots} the Box and Wiskers plots of the two Regions, stratified by the existance or not of fire are presented. The orange plots are the ones that a fire happened, while the green ones represent the absense of fire. We can see for example, that in general, then the temperature is higher the mean probability of fire is higher. However this needs to be tested further, since we can see that almost all the boxplot (from Q1 to Q3) can be contained in the Inter Quartile Range (IQR) of the green diagrams. That means that this difference in means, might not be stastistically significant. In addition, in the variable RH, which represents daily relative Humidity (\%), The mean probability of Fire in the Sidi Bel-abbes region seems to be significantly lower but the variability of that box plot is extremely large, indicating again that it might not be significant. Lastly, the most important variable seems to be the RainYest (Yesterday's precipitations in $mm/m^2$) variable.
 
 \item
-Explanation:
-
-Results:
-
-\item
-Explanation:
-
-Results:
+Explanation: A glm Bernouli model with these four covariates has been fitter to predict the probability of Fire. The logit link was used. After unlinkin through the inverse logit function, the coefficients are (Intercept):0.549 TempCels:0.579 RH:0.492 Ws:0.519 RainYest:0.339. 
+Lastly, the probability of a fire on the new data was estimated to be: 0.00049. 
 
 \item
-Explanation:
+The same model was fitted with JAGS this time. In order for the chains to converge, a burnin of 2000, along with 50000 iterations were chosen. Some autocorelation was present with these initial values, therefore, a thining of 100 was selected as well. The coefficints are, (Intercept):0.453 TempCels:0.418 RH:0.508 Ws:0.480 RainYest:0.667 which are similar but not the same as the previous model. The interpretation of the intercept is that there is a 45.3\% probability of a Fire on the average levels of the variables Temperature, RH, Wind speeds and RainYest. As for the rest have the same interpretation and TempCels is going to be used as an example. When TempCels increases by one unit, there is a 4.18\% increase in the probability of Fire in Algeria.
 
-Results:
+\item
+In this section three JAGS models have been fitted, progressivly more complex, which are reported here along the initial values that ensured convergence. 
+
+\begin{verbatim}
+model.d1 <- "model{
+  # Likelihood
+  for(i in 1:n) {
+      Fire[i] ~ dbern(mu[i])
+      logit(mu[i]) <- -(beta0[j.region[i]] + 
+                        beta1*TempCels[i] + 
+                        beta2*RH[i] + 
+                        beta3*Ws[i] + 
+                        beta4*RainYest[i])
+  }
+  
+  # priors for independent intercepts per county
+  for(j in 1:J){
+    beta0[j] ~ dnorm(0,1/0.1)
+  }
+  # prior
+  beta1 ~ dnorm(0,1/100)
+  beta2 ~ dnorm(0,1/100)
+  beta3 ~ dnorm(0,1/100)
+  beta4 ~ dnorm(0,1/100)
+  }"
+\end{verbatim}
+
+Model.d1 initial values: 
+Initial values for all beta coefficient were set with a zero centered Normal prior and 1 of standard deviation.
+\begin{itemize}
+\item chains: 5
+\item thin: 100
+\item iterations: 50000
+\item burnin: 7000
+\end{itemize}
+
+All the effective sample size are above 2500. 
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.6\linewidth]{figures/Rplot09.pdf}
+    \caption{Model d1}
+    \label{model d1}
+\end{figure}
+
+In \autoref{model d1} The posterior expected probabilities of fire in the two Algerian region are plotted.
+
+\begin{verbatim}
+model.d2 <- "model{
+  # Likelihood
+  for(i in 1:n) {
+      Fire.rep[i] ~ dbern(mu[i])
+      Fire[i] ~ dbern(mu[i])
+      logit(mu[i]) <- -(beta0[Region.month.b[i]] + 
+                        beta1*TempCels[i] + 
+                        beta2*RH[i] + 
+                        beta3*Ws[i] + 
+                        beta4*RainYest[i] +
+                        beta5[j.region[i]]*month.b[i])
+  }
+  # priors for independent intercepts per county
+  for(j in 1:J){
+    beta5[j] ~ dnorm(0,1/0.1)
+  }
+  
+  for(k in 1:K){
+    beta0[k] ~ dnorm(0,1/0.1)
+  }
+  
+  # prior
+  beta1 ~ dnorm(0,1/100)
+  beta2 ~ dnorm(0,1/100)
+  beta3 ~ dnorm(0,1/100)
+  beta4 ~ dnorm(0,1/100)
+  }"
+\end{verbatim}
+
+Model.d2 initial values: 
+Initial values for all beta coefficient were set with a zero centered Normal prior and 1 of standard deviation.
+\begin{itemize}
+\item chains: 5
+\item thin: 100
+\item iterations: 50000
+\item burnin: 2000
+\end{itemize}
+
+All the effective sample size are above 2500. 
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.6\linewidth]{figures/Rplot10.pdf}
+    \caption{Model d2}
+    \label{model d2}
+\end{figure}
+
+In \autoref{model d2} The posterior expected probabilities of fire in the two Algerian region are plotted.
 
 
+\begin{verbatim}
+model.d3 <- "model{
+  # Likelihood
+  for(i in 1:n) {
+      Fire.rep[i] ~ dbern(mu[i])
+      Fire[i] ~ dbern(mu[i])
+      logit(mu[i]) <- -(beta0[region.month[i]] + 
+                        beta1*TempCels[i] + 
+                        beta2*RH[i] + 
+                        beta3*Ws[i] + 
+                        beta4*RainYest[i]) +
+                        omega[region.month[i]]
+  }
+  
+  # priors for independent intercepts per county
+  for(j in 1:J){
+    beta0[j] ~ dnorm(0, 1/0.1)
+    omega[j] ~ dnorm(0, 1/omega.sigma2)
+  }
+  # prior
+  beta1 ~ dnorm(0,1/100)
+  beta2 ~ dnorm(0,1/100)
+  beta3 ~ dnorm(0,1/100)
+  beta4 ~ dnorm(0,1/100)
+  omega.sigma2 ~ dgamma(0.01,0.01)
+}"
+\end{verbatim}
+
+Model.d3 initial values: 
+Initial values for all beta coefficient were set with a zero centered Normal prior and 1 of standard deviation.
+\begin{itemize}
+\item chains: 5
+\item thin: 100
+\item iterations: 50000
+\item burnin: 2000
+\end{itemize}
+
+
+All the effective sample size are above 2500. 
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.6\linewidth]{figures/Rplot11.pdf}
+    \caption{Model e1}
+    \label{model d3}
+\end{figure}
+
+In \autoref{model d3} The posterior expected probabilities of fire stratified by the four monhts in the two Algerian Regions is plotted.
+This models has also been fitted with INLA, however the results are not the same. This means that something is not correct on the setting of the INLA model.
+
+\item
+
+In this section posterior predictive checks are being presented. 50000 posterior predicitve samples have been generated from the posterior predictive distribution of models d2, d3 and e1. Then the sums of fires per Region per month have been calculated in these posterior samples. Since we can also calculate the sums of fire pre region per month on the original sample, then, we can plot the distribution of this statistic (called \textit{total fires}) and the observed values in \autoref{final}. 
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=1\linewidth]{figures/Rplot12.pdf}
+    \caption{Simulated Fires}
+    \label{final}
+\end{figure}
+
+The table of the probabilities of observing a proportion of wildfires for each region and month that is more extreme than those observed in the actual dataset is also being reported here. More extreme means, bigger value in the \textit{total fires} column.
+
+\begin{table}
+\centering
+\begin{tabular}{|l|lll|} 
+\hline
+\multicolumn{1}{|l}{Model} & Region & Month & Probability                                        \\ 
+\hline
+d2                         & B      & 6     & 0.24326                                            \\
+d2                         & B      & 7     & 0.57966                                            \\
+d2                         & B      & 8     & 0.34038                                            \\
+d2                         & B      & 9     & 0.60928                                            \\
+d2                         & S      & 6     & 0.87126                                            \\
+d2                         & S      & 7     & 0.18758                                            \\
+d2                         & S      & 8     & 0.37692                                            \\
+d2                         & S      & 9     & 0.10148                                            \\
+d3                         & B      & 6     & 0.28778                                            \\
+d3                         & B      & 7     & 0.53380                                            \\
+d3                         & B      & 8     & 0.39554                                            \\
+d3                         & B      & 9     & 0.53670                                            \\
+d3                         & S      & 6     & 0.67466                                            \\
+d3                         & S      & 7     & 0.13770                                            \\
+d3                         & S      & 8     & 0.26356                                            \\
+d3                         & S      & 9     & 0.10782                                            \\
+e1                         & B      & 6     & 0.20640                                            \\
+e1                         & B      & 7     & 0.34184                                            \\
+e1                         & B      & 8     & 0.38944                                            \\
+e1                         & B      & 9     & 0.22506                                            \\
+e1                         & S      & 6     & 0.34068                                            \\
+e1                         & S      & 7     & 0.25394                                            \\
+e1                         & S      & 8     & 0.40288                                            \\
+e1                         & S      & 9     & 0.16360                                            \\
+\hline
+\end{tabular}
+\end{table}
+
+Lastly, the DIC scores for d2, d3, and e1 are 237.5, 235, 190.2 respectively. Since model e1 has a lower DIC score, that means that it is the prefered model.
+
+The last question is about finding the hyperparameters of a prior for the parameter DMC where we elicit the information from a domain expert. 
 \end{enumerate}
 \end{document}

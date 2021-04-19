@@ -155,7 +155,7 @@ model.s <- "model{
 
  #Likelihood
   for(i in 1:n) {
-      mu[i]  <- lambda*eartrUK[i]
+      log(mu[i])  <- lambda*eartrUK[i]
       eartScot[i] ~ dpois(mu[i])
     } 
   }"
@@ -230,7 +230,7 @@ model.h <- "model{
 
  # Likelihood
   for(i in 1:n) {
-      mu[i]  <- lambda*eartrUK[i]
+      log(mu[i])  <- lambda*eartrUK[i]
       eartScot[i] ~ dpois(mu[i])
     } 
   }"
@@ -263,7 +263,7 @@ b3.data <- list(n=length(earthQ$eartrUK),
 b3 <- b.fit.transform(data=b3.data,
                       model=model.h,
                       chains=5,
-                      burnin=7000,
+                      burnin=2000,
                       var.names=c("lambda", "a.0", "b.0"),
                       total=1e5,
                       thin=100)
@@ -284,7 +284,7 @@ model.c1 <- "model{
 
  # Likelihood
   for(i in 1:n) {
-      log(mu[i]) <- beta0+beta1*(dist[i]-mean(dist[]))
+      exp(mu[i]) <- beta0+beta1*(dist[i]-mean(dist[]))
       eartScot[i] ~ dpois(mu[i])
     } 
   }"
@@ -636,7 +636,7 @@ gelman.c2  <- c2[[3]]
 neff.c2    <- c2[[4]]
 summary(results.c2)
 gelman.c2
-neff.c2
+neff.c2 
 ```
 
 ```{r 2.c(results)}
